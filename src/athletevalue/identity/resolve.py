@@ -53,3 +53,22 @@ def resolve_player(table: pl.DataFrame, query: str, *, team: str | None = None) 
         options = ", ".join(f"{r['name']} ({r['team']})" for r in pool.iter_rows(named=True))
         raise AmbiguousPlayerError(f"{query!r} matches several players: {options}. Pass a team.")
     return pool.row(0, named=True)
+
+
+class TeamNotFoundError(LookupError):
+    pass
+
+
+def resolve_team(teams: pl.DataFrame, query: str) -> str:
+    """Return the team name in *teams* (a frame with a ``team`` column) closest to *query*."""
+    names = teams["team"].to_list()
+    wanted = normalize_name(query)
+    for name in names:
+        if normalize_name(name) == wanted:
+            return str(name)
+    scored = sorted(((similarity(name, query), name) for name in names), reverse=True)
+    if not scored or scored[0][0] < _MATCH_FLOOR:
+        raise TeamNotFoundError(f"no team close to {query!r}")
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        raise TeamNotFoundError(f"{query!r} matches {scored[0][1]} and {scored[1][1]}")
+    return str(scored[0][1])

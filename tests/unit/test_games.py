@@ -19,6 +19,9 @@ def test_records_bids_and_neutral_sites():
     espn = pl.DataFrame(
         {
             "game_id": [11, 12, 13],
+            "game_date": [None, None, None],
+            "home_location": ["A", "A", "B"],
+            "away_location": ["B", "C", "A"],
             "neutral_site": [False, True, True],
             "season_type": [2, 3, 3],
             "tournament_id": [None, 22, 22],

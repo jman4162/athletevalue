@@ -70,8 +70,11 @@ license = "factual_citation"
 ["market.budget_range_level"]
 description = "Probability mass assigned to a cited (low, high) budget range."
 unit = "probability"
-basis = "user_input"
+basis = "modelling_choice"
 value = 0.8
+rationale = """The study reports averages "between" two figures without a stated interval.
+Reading the range as covering most programs, not all, leaves room for outliers in
+both directions without inventing a distribution the source does not give."""
 
 ["market.role_weight_rotation"]
 description = "Pay of a rotation player relative to a starter (low, high)."
@@ -127,17 +130,3 @@ replacement, so a paid roster spot never allocates zero or negative dollars."""
 unit = "points per 100 possessions"
 basis = "user_input"
 value = 0.5
-
-["market.star_pay_ratio_reference"]
-description = "Reported pay of star players relative to sophomores (low, high). Validation only."
-unit = "ratio"
-basis = "published_third_party"
-value = [4.0, 7.0]
-
-["market.star_pay_ratio_reference".citation]
-kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
-url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
-quote = "freshmen and senior stars are considered the biggest earners, making 4-7 times more than sophomores"
-published = "2026-03-12"
-license = "factual_citation"

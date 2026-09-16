@@ -35,7 +35,7 @@ def build_lineup_data(
     possessions: pl.DataFrame,
     *,
     d1_teams: frozenset[str],
-    neutral_espn_games: frozenset[str],
+    neutral_contests: frozenset[str],
     drop_garbage_time: bool,
 ) -> LineupData:
     require_columns(possessions, POSSESSION_COLUMNS, "possessions")
@@ -60,11 +60,11 @@ def build_lineup_data(
     frame = frame.filter(usable)
     counts["usable"] = frame.height
 
-    neutral = pl.Series(sorted(neutral_espn_games), dtype=pl.Utf8).implode()
+    neutral = pl.Series(sorted(neutral_contests), dtype=pl.Utf8).implode()
     offense_home = pl.col("poss_team") == pl.col("home")
     frame = frame.with_columns(
         offense_home.alias("offense_home"),
-        pl.col("espn_game_id").cast(pl.Utf8).is_in(neutral).alias("neutral"),
+        pl.col("contest_id").cast(pl.Utf8).is_in(neutral).alias("neutral"),
         _sorted_ids("home").alias("home_ids"),
         _sorted_ids("away").alias("away_ids"),
     )

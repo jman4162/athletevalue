@@ -34,6 +34,9 @@ SCHEDULE_COLUMNS: tuple[str, ...] = (
 )
 ESPN_SCHEDULE_COLUMNS: tuple[str, ...] = (
     "game_id",
+    "game_date",
+    "home_location",
+    "away_location",
     "neutral_site",
     "season_type",
     "tournament_id",
@@ -48,6 +51,12 @@ NCAA_TOURNAMENT_ID = 22
 """ESPN's tournament id for the NCAA men's championship; constant in 2012-2026 files."""
 
 POSTSEASON_TYPE = 3
+
+MATCH_MIN_SIMILARITY = 0.6
+"""Average name similarity both teams need when matching an ESPN game to an NCAA game."""
+
+MATCH_DAY_WINDOW = 1
+"""ESPN and stats.ncaa.org dates for the same game can differ by a day near midnight."""
 
 
 class SchemaError(ValueError):

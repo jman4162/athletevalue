@@ -30,3 +30,16 @@ def test_registry_citations_are_redistributable_facts():
             assert assumption.citation.license is LicenseTag.FACTUAL_CITATION, (
                 assumption.assumption_id
             )
+
+
+def test_every_assumption_is_used_by_code():
+    """A registry entry no code reads would mislead a reader about what drives results."""
+    code = "\n".join(p.read_text(encoding="utf-8") for p in SRC.rglob("*.py"))
+    registry = AssumptionRegistry.load()
+    budget_prefix = "market.roster_budget_"
+    unused = [
+        a.assumption_id
+        for a in registry
+        if a.assumption_id not in code and not a.assumption_id.startswith(budget_prefix)
+    ]
+    assert not unused, unused

@@ -1,0 +1,16 @@
+Test Player · State (Big Ten) · 2025-26 · starter
+
+Athletic impact            +6.0 /100   80%: +3.4 to +8.6            ▲ estimated
+  offense / defense      +4.0 / +2.0
+Wins above replacement           3.2   80%: 2.0 to 4.5              ▲ estimated
+Program value                  $450k   80%: $200k to $800k          ○ scenario
+  win revenue                  $420k   80%: $190k to $760k          ▲ estimated
+Roster market value            $900k   80%: $600k to $1.30M         ○ scenario
+Surplus                       -$450k   80%: -$900k to $50k          ○ scenario
+Value vs. price            fair star
+
+Drivers
++ on-court impact ranks 40 of 4000 rated players
+
+Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
+As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.1.0

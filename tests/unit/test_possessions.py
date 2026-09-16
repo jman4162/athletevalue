@@ -46,7 +46,7 @@ def test_aggregates_by_lineup_offense_and_venue():
     data = build_lineup_data(
         _frame(rows),
         d1_teams=frozenset({"A", "B"}),
-        neutral_espn_games=frozenset(),
+        neutral_contests=frozenset(),
         drop_garbage_time=True,
     )
     assert data.counts["after_garbage_time"] == 3
@@ -70,7 +70,7 @@ def test_non_d1_opponent_collapses_and_missing_d1_ids_are_dropped():
     data = build_lineup_data(
         _frame(rows),
         d1_teams=frozenset({"A", "B"}),
-        neutral_espn_games=frozenset({"e1"}),
+        neutral_contests=frozenset({"c1"}),
         drop_garbage_time=False,
     )
     assert data.counts["usable"] == 2

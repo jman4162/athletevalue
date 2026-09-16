@@ -1,0 +1,376 @@
+team,unitid,eada_institution_name
+A&M-Corpus Christi,224147,Texas A & M University-Corpus Christi
+Abilene Christian,222178,Abilene Christian University
+Air Force,,
+Akron,200800,University of Akron Main Campus
+Alabama,100751,The University of Alabama
+Alabama A&M,100654,Alabama A & M University
+Alabama St.,100724,Alabama State University
+Alcorn,175342,Alcorn State University
+American,131159,American University
+App State,197869,Appalachian State University
+Arizona,104179,University of Arizona
+Arizona St.,104151,Arizona State University Campus Immersion
+Ark.-Pine Bluff,106412,University of Arkansas at Pine Bluff
+Arkansas,106397,University of Arkansas
+Arkansas St.,106458,Arkansas State University
+Army West Point,,
+Auburn,100858,Auburn University
+Austin Peay,219602,Austin Peay State University
+BYU,230038,Brigham Young University
+Ball St.,150136,Ball State University
+Baylor,223232,Baylor University
+Bellarmine,156286,Bellarmine University
+Belmont,219709,Belmont University
+Bethune-Cookman,132602,Bethune-Cookman University
+Binghamton,196079,Binghamton University
+Boise St.,142115,Boise State University
+Boston College,164924,Boston College
+Boston U.,164988,Boston University
+Bowling Green,201441,Bowling Green State University-Main Campus
+Bradley,143358,Bradley University
+Brown,217156,Brown University
+Bryant,217165,Bryant University
+Bucknell,211291,Bucknell University
+Buffalo,196088,University at Buffalo
+Butler,150163,Butler University
+CSU Bakersfield,110486,California State University-Bakersfield
+CSUN,110608,California State University-Northridge
+Cal Poly,110422,California Polytechnic State University-San Luis Obispo
+Cal St. Fullerton,110565,California State University-Fullerton
+California,110635,University of California-Berkeley
+California Baptist,110361,California Baptist University
+Campbell,198136,Campbell University
+Canisius,189705,Canisius University
+Central Ark.,106704,University of Central Arkansas
+Central Conn. St.,128771,Central Connecticut State University
+Central Mich.,169248,Central Michigan University
+Charleston So.,217688,Charleston Southern University
+Charlotte,199139,University of North Carolina at Charlotte
+Chattanooga,221740,The University of Tennessee-Chattanooga
+Chicago St.,144005,Chicago State University
+Cincinnati,201885,University of Cincinnati-Main Campus
+Clemson,217882,Clemson University
+Cleveland St.,202134,Cleveland State University
+Coastal Carolina,218724,Coastal Carolina University
+Col. of Charleston,217819,College of Charleston
+Colgate,190099,Colgate University
+Colorado,126614,University of Colorado Boulder
+Colorado St.,126818,Colorado State University-Fort Collins
+Columbia,190150,Columbia University in the City of New York
+Coppin St.,162283,Coppin State University
+Cornell,190415,Cornell University
+Creighton,181002,Creighton University
+Dartmouth,182670,Dartmouth College
+Davidson,198385,Davidson College
+Dayton,202480,University of Dayton
+DePaul,144740,DePaul University
+Delaware,130943,University of Delaware
+Delaware St.,130934,Delaware State University
+Denver,127060,University of Denver
+Detroit Mercy,169716,University of Detroit Mercy
+Drake,153269,Drake University
+Drexel,212054,Drexel University
+Duke,198419,Duke University
+Duquesne,212106,Duquesne University
+ETSU,220075,East Tennessee State University
+East Carolina,198464,East Carolina University
+East Texas A&M,224554,East Texas A&M University
+Eastern Ill.,144892,Eastern Illinois University
+Eastern Ky.,156620,Eastern Kentucky University
+Eastern Mich.,169798,Eastern Michigan University
+Eastern Wash.,235097,Eastern Washington University
+Elon,198516,Elon University
+Evansville,150534,University of Evansville
+FDU,184603,Fairleigh Dickinson University-Metropolitan Campus
+FGCU,433660,Florida Gulf Coast University
+FIU,133951,Florida International University
+Fairfield,129242,Fairfield University
+Fairleigh Dickinson,184603,Fairleigh Dickinson University-Metropolitan Campus
+Fla. Atlantic,133669,Florida Atlantic University
+Florida,134130,University of Florida
+Florida A&M,133650,Florida Agricultural and Mechanical University
+Florida St.,134097,Florida State University
+Fordham,191241,Fordham University
+Fresno St.,110556,California State University-Fresno
+Furman,218070,Furman University
+Ga. Southern,139931,Georgia Southern University
+Gardner-Webb,198561,Gardner-Webb University
+George Mason,232186,George Mason University
+George Washington,131469,George Washington University
+Georgetown,131496,Georgetown University
+Georgia,139959,University of Georgia
+Georgia St.,139940,Georgia State University
+Georgia Tech,139755,Georgia Institute of Technology-Main Campus
+Gonzaga,235316,Gonzaga University
+Grambling,159009,Grambling State University
+Grand Canyon,104717,Grand Canyon University
+Green Bay,240277,University of Wisconsin-Green Bay
+Hampton,232265,Hampton University
+Hartford,129525,University of Hartford
+Harvard,166027,Harvard University
+Hawaii,141574,University of Hawaii at Manoa
+High Point,198695,High Point University
+Hofstra,191649,Hofstra University
+Holy Cross,166124,College of the Holy Cross
+Houston,225511,University of Houston
+Houston Christian,225399,Houston Christian University
+Howard,131520,Howard University
+IU Indy,151111,Indiana University-Indianapolis
+IUPUI,151111,Indiana University-Indianapolis
+Idaho,142285,University of Idaho
+Idaho St.,142276,Idaho State University
+Illinois,145637,University of Illinois Urbana-Champaign
+Illinois St.,145813,Illinois State University
+Indiana,151351,Indiana University-Bloomington
+Indiana St.,151324,Indiana State University
+Iona,191931,Iona University
+Iowa,153658,University of Iowa
+Iowa St.,153603,Iowa State University
+Jackson St.,175856,Jackson State University
+Jacksonville,134945,Jacksonville University
+Jacksonville St.,101480,Jacksonville State University
+James Madison,232423,James Madison University
+Kansas,155317,University of Kansas
+Kansas City,178402,University of Missouri-Kansas City
+Kansas St.,155399,Kansas State University
+Kennesaw St.,140164,Kennesaw State University
+Kennesaw St.,486840,Kennesaw State University
+Kent St.,203517,Kent State University at Kent
+Kentucky,157085,University of Kentucky
+LIU,192448,Long Island University
+LIU Brooklyn,192439,LIU Brooklyn
+LMU (CA),117946,Loyola Marymount University
+LSU,159391,Louisiana State University and Agricultural & Mechanical College
+La Salle,213367,La Salle University
+Lafayette,213385,Lafayette College
+Lamar University,226091,Lamar University
+Le Moyne,192323,Le Moyne College
+Lehigh,213543,Lehigh University
+Liberty,232557,Liberty University
+Lindenwood,177968,Lindenwood University
+Lipscomb,219976,Lipscomb University
+Little Rock,106245,University of Arkansas at Little Rock
+Long Beach St.,110583,California State University-Long Beach
+Longwood,232566,Longwood University
+Louisiana,160658,University of Louisiana at Lafayette
+Louisiana Tech,159647,Louisiana Tech University
+Louisville,157289,University of Louisville
+Loyola Chicago,146719,Loyola University Chicago
+Loyola Maryland,163046,Loyola University Maryland
+Maine,161253,University of Maine
+Manhattan,192703,Manhattan University
+Marist,192819,Marist University
+Marquette,239105,Marquette University
+Marshall,237525,Marshall University
+Maryland,163286,University of Maryland-College Park
+Massachusetts,166629,University of Massachusetts-Amherst
+McNeese,159717,McNeese State University
+Memphis,220862,University of Memphis
+Mercer,140447,Mercer University
+Mercyhurst,213987,Mercyhurst University
+Merrimack,166850,Merrimack College
+Miami (FL),135726,University of Miami
+Miami (OH),204024,Miami University-Oxford
+Michigan,170976,University of Michigan-Ann Arbor
+Michigan St.,171100,Michigan State University
+Middle Tenn.,220978,Middle Tennessee State University
+Milwaukee,240453,University of Wisconsin-Milwaukee
+Minnesota,174066,University of Minnesota-Twin Cities
+Mississippi St.,176080,Mississippi State University
+Mississippi Val.,176044,Mississippi Valley State University
+Missouri,178396,University of Missouri-Columbia
+Missouri St.,179566,Missouri State University-Springfield
+Monmouth,185572,Monmouth University
+Montana,180489,The University of Montana
+Montana St.,180461,Montana State University
+Morehead St.,157386,Morehead State University
+Morgan St.,163453,Morgan State University
+Mount St. Mary's,163462,Mount St. Mary's University
+Murray St.,157401,Murray State University
+N.C. A&T,199102,North Carolina A & T State University
+N.C. Central,199157,North Carolina Central University
+NC State,199193,North Carolina State University at Raleigh
+NIU,147703,Northern Illinois University
+NJIT,185828,New Jersey Institute of Technology
+Navy,,
+Nebraska,181464,University of Nebraska-Lincoln
+Nevada,182290,University of Nevada-Reno
+New Hampshire,183044,University of New Hampshire-Main Campus
+New Haven,,
+New Mexico,187985,University of New Mexico-Main Campus
+New Mexico St.,188030,New Mexico State University-Main Campus
+New Orleans,159939,University of New Orleans
+Niagara,193973,Niagara University
+Nicholls,159966,Nicholls State University
+Norfolk St.,232937,Norfolk State University
+North Ala.,101879,University of North Alabama
+North Carolina,199120,University of North Carolina at Chapel Hill
+North Dakota,200280,University of North Dakota
+North Dakota St.,200332,North Dakota State University-Main Campus
+North Florida,136172,University of North Florida
+North Texas,227216,University of North Texas
+Northeastern,167358,Northeastern University
+Northern Ariz.,105330,Northern Arizona University
+Northern Colo.,127741,University of Northern Colorado
+Northern Ky.,157447,Northern Kentucky University
+Northwestern,147767,Northwestern University
+Northwestern St.,160038,Northwestern State University of Louisiana
+Notre Dame,152080,University of Notre Dame
+Oakland,171571,Oakland University
+Ohio,204857,Ohio University-Main Campus
+Ohio St.,204796,Ohio State University-Main Campus
+Oklahoma,207500,University of Oklahoma-Norman Campus
+Oklahoma St.,207388,Oklahoma State University-Main Campus
+Old Dominion,232982,Old Dominion University
+Ole Miss,176017,University of Mississippi
+Omaha,181394,University of Nebraska at Omaha
+Oral Roberts,207582,Oral Roberts University
+Oregon,209551,University of Oregon
+Oregon St.,209542,Oregon State University
+Pacific,120883,University of the Pacific
+Penn,215062,University of Pennsylvania
+Penn St.,214777,Pennsylvania State University-Main Campus
+Penn St.,495767,The Pennsylvania State University
+Pepperdine,121150,Pepperdine University
+Pittsburgh,215293,University of Pittsburgh-Pittsburgh Campus
+Portland,209825,University of Portland
+Portland St.,209807,Portland State University
+Prairie View,227526,Prairie View A & M University
+Presbyterian,218539,Presbyterian College
+Princeton,186131,Princeton University
+Providence,217402,Providence College
+Purdue,243780,Purdue University-Main Campus
+Purdue Fort Wayne,151102,Purdue University Fort Wayne
+Queens (NC),199412,Queens University of Charlotte
+Quinnipiac,130226,Quinnipiac University
+Radford,233277,Radford University
+Rhode Island,217484,University of Rhode Island
+Rice,227757,Rice University
+Richmond,233374,University of Richmond
+Rider,186283,Rider University
+Robert Morris,215655,Robert Morris University
+Rutgers,186380,Rutgers University-New Brunswick
+SFA,228431,Stephen F Austin State University
+SIUE,149231,Southern Illinois University Edwardsville
+SMU,228246,Southern Methodist University
+Sacramento St.,110617,California State University-Sacramento
+Sacred Heart,130253,Sacred Heart University
+Saint Francis,215743,Saint Francis University
+Saint Francis (PA),215743,Saint Francis University
+Saint Joseph's,215770,Saint Joseph's University - Philadelphia
+Saint Louis,179159,Saint Louis University
+Saint Mary's (CA),123554,Saint Mary's College of California
+Saint Peter's,186432,Saint Peter's University
+Sam Houston,227881,Sam Houston State University
+Samford,102049,Samford University
+San Diego,122436,University of San Diego
+San Diego St.,122409,San Diego State University
+San Francisco,122612,University of San Francisco
+San Jose St.,122755,San Jose State University
+Santa Clara,122931,Santa Clara University
+Savannah St.,140960,Savannah State University
+Seattle U,236595,Seattle University
+Seton Hall,186584,Seton Hall University
+Siena,195474,Siena College
+South Alabama,102094,University of South Alabama
+South Carolina,218663,University of South Carolina-Columbia
+South Carolina St.,218733,South Carolina State University
+South Dakota,219471,University of South Dakota
+South Dakota St.,219356,South Dakota State University
+South Fla.,137351,University of South Florida
+Southeast Mo. St.,179557,Southeast Missouri State University
+Southeastern La.,160612,Southeastern Louisiana University
+Southern California,123961,University of Southern California
+Southern Ill.,149222,Southern Illinois University-Carbondale
+Southern Ind.,151306,University of Southern Indiana
+Southern Miss.,176372,University of Southern Mississippi
+Southern U.,160621,Southern University and A & M College
+Southern Utah,230603,Southern Utah University
+St. Bonaventure,195164,St Bonaventure University
+St. Francis Brooklyn,195173,St. Francis College
+St. John's (NY),195809,St. John's University-New York
+St. Thomas (MN),174914,University of St Thomas
+Stanford,243744,Stanford University
+Stetson,137546,Stetson University
+Stonehill,167996,Stonehill College
+Stony Brook,196097,Stony Brook University
+Syracuse,196413,Syracuse University
+TCU,228875,Texas Christian University
+Tarleton St.,228529,Tarleton State University
+Temple,216339,Temple University
+Tennessee,221759,The University of Tennessee-Knoxville
+Tennessee St.,221838,Tennessee State University
+Tennessee Tech,221847,Tennessee Technological University
+Tex. A&M-Commerce,224554,East Texas A&M University
+Texas,228778,The University of Texas at Austin
+Texas A&M,228723,Texas A&M University-College Station
+Texas Southern,229063,Texas Southern University
+Texas St.,228459,Texas State University
+Texas Tech,229115,Texas Tech University
+The Citadel,217864,Citadel Military College of South Carolina
+Toledo,206084,University of Toledo
+Towson,164076,Towson University
+Troy,102368,Troy University
+Tulane,160755,Tulane University of Louisiana
+Tulsa,207971,University of Tulsa
+UAB,100663,University of Alabama at Birmingham
+UAlbany,196060,University at Albany
+UC Davis,110644,University of California-Davis
+UC Irvine,110653,University of California-Irvine
+UC Riverside,110671,University of California-Riverside
+UC San Diego,110680,University of California-San Diego
+UC Santa Barbara,110705,University of California-Santa Barbara
+UCF,132903,University of Central Florida
+UCLA,110662,University of California-Los Angeles
+UConn,129020,University of Connecticut
+UIC,145600,University of Illinois Chicago
+UIW,225627,University of the Incarnate Word
+ULM,159993,University of Louisiana at Monroe
+UMBC,163268,University of Maryland-Baltimore County
+UMES,163338,University of Maryland Eastern Shore
+UMass Lowell,166513,University of Massachusetts-Lowell
+UNC Asheville,199111,University of North Carolina Asheville
+UNC Greensboro,199148,University of North Carolina at Greensboro
+UNCW,199218,University of North Carolina Wilmington
+UNI,154095,University of Northern Iowa
+UNLV,182281,University of Nevada-Las Vegas
+USC Upstate,218742,University of South Carolina-Upstate
+UT Arlington,228769,The University of Texas at Arlington
+UT Martin,221768,The University of Tennessee-Martin
+UTEP,228796,The University of Texas at El Paso
+UTRGV,227368,The University of Texas Rio Grande Valley
+UTSA,229027,The University of Texas at San Antonio
+Utah,230764,University of Utah
+Utah St.,230728,Utah State University
+Utah Tech,230171,Utah Tech University
+Utah Valley,230737,Utah Valley University
+VCU,234030,Virginia Commonwealth University
+VMI,234085,Virginia Military Institute
+Valparaiso,152600,Valparaiso University
+Vanderbilt,221999,Vanderbilt University
+Vermont,231174,University of Vermont
+Villanova,216597,Villanova University
+Virginia,234076,University of Virginia-Main Campus
+Virginia Tech,233921,Virginia Polytechnic Institute and State University
+Wagner,197197,Wagner College
+Wake Forest,199847,Wake Forest University
+Washington,236948,University of Washington-Seattle Campus
+Washington St.,236939,Washington State University
+Weber St.,230782,Weber State University
+West Ga.,141334,University of West Georgia
+West Virginia,238032,West Virginia University
+Western Caro.,200004,Western Carolina University
+Western Ill.,149772,Western Illinois University
+Western Ky.,157951,Western Kentucky University
+Western Mich.,172699,Western Michigan University
+Wichita St.,156125,Wichita State University
+William & Mary,231624,William & Mary
+Winthrop,218964,Winthrop University
+Wisconsin,240444,University of Wisconsin-Madison
+Wofford,218973,Wofford College
+Wright St.,206604,Wright State University-Main Campus
+Wyoming,240727,University of Wyoming
+Xavier,206622,Xavier University
+Yale,130794,Yale University
+Youngstown St.,206695,Youngstown State University

@@ -11,7 +11,7 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.constants import PER_100
-from athletevalue.frames.games import build_season_games, espn_game_map
+from athletevalue.frames.games import build_season_games, combined_game_map
 from athletevalue.frames.possessions import build_lineup_data
 from athletevalue.frames.team_possessions import team_possession_totals
 from athletevalue.impact.cv import CvResult, cv_lambda
@@ -112,19 +112,15 @@ def assemble_season(
     seed: int = 0,
 ) -> SeasonModel:
     season = frames.season
-    game_map = espn_game_map(frames.possessions)
+    game_map = combined_game_map(frames.possessions, frames.schedule, frames.espn_schedule)
     season_games = build_season_games(
         frames.schedule, frames.espn_schedule, frames.team_ids, game_map
     )
-    neutral = frozenset(
-        game_map.join(season_games.games.filter("neutral").select("contest_id"), on="contest_id")[
-            "espn_game_id"
-        ].to_list()
-    )
+    neutral = frozenset(season_games.games.filter("neutral")["contest_id"].to_list())
     lineups = build_lineup_data(
         frames.possessions,
         d1_teams=frozenset(frames.team_ids["team"].to_list()),
-        neutral_espn_games=neutral,
+        neutral_contests=neutral,
         drop_garbage_time=registry.get("mbb.impact.drop_garbage_time").flag(),
     )
     min_poss = registry.get("mbb.impact.min_possessions").scalar()

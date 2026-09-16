@@ -8,12 +8,15 @@ import polars as pl
 
 from athletevalue.frames.columns import (
     ESPN_SCHEDULE_COLUMNS,
+    MATCH_DAY_WINDOW,
+    MATCH_MIN_SIMILARITY,
     NCAA_TOURNAMENT_ID,
     POSTSEASON_TYPE,
     SCHEDULE_COLUMNS,
     TEAM_ID_COLUMNS,
     require_columns,
 )
+from athletevalue.identity.names import similarity
 
 
 @dataclass(frozen=True)
@@ -27,15 +30,100 @@ class SeasonGames:
 
 
 def espn_game_map(possessions: pl.DataFrame) -> pl.DataFrame:
-    """contest_id to ESPN game id and ESPN team ids, taken from the possession file."""
-    return possessions.select(
+    """contest_id to ESPN game id, where the possession file records it (2023 onward)."""
+    return (
+        possessions.select("contest_id", pl.col("espn_game_id").cast(pl.Utf8))
+        .drop_nulls("espn_game_id")
+        .unique(subset=["contest_id"], keep="first")
+    )
+
+
+def match_espn_games(schedule: pl.DataFrame, espn_schedule: pl.DataFrame) -> pl.DataFrame:
+    """contest_id to ESPN game id for neutral-site and postseason games, by date and names.
+
+    Only those games change a venue or a tournament flag, so only they are matched.
+    A pair must fall within a day of each other and both team names must be similar;
+    the best-scoring pairs are taken one to one.
+    """
+    empty = pl.DataFrame(schema={"contest_id": pl.Utf8, "espn_game_id": pl.Utf8})
+    ncaa = schedule.select(
         "contest_id",
-        pl.col("espn_game_id").cast(pl.Utf8),
+        pl.col("game_date").str.strptime(pl.Date, "%m/%d/%Y", strict=False).alias("date"),
         "home",
         "away",
-        pl.col("home_espn_team_id").cast(pl.Utf8),
-        pl.col("away_espn_team_id").cast(pl.Utf8),
-    ).unique(subset=["contest_id"], keep="first")
+    ).drop_nulls("date")
+    espn = (
+        espn_schedule.filter(
+            pl.col("neutral_site").fill_null(False) | (pl.col("season_type") == POSTSEASON_TYPE)
+        )
+        .select(
+            pl.col("game_id").cast(pl.Utf8).alias("espn_game_id"),
+            pl.col("game_date").cast(pl.Date).alias("espn_date"),
+            pl.col("home_location").alias("espn_home"),
+            pl.col("away_location").alias("espn_away"),
+        )
+        .drop_nulls("espn_date")
+    )
+    if espn.is_empty() or ncaa.is_empty():
+        return empty
+    shifted = pl.concat(
+        [
+            espn.with_columns((pl.col("espn_date") + pl.duration(days=k)).alias("date"))
+            for k in range(-MATCH_DAY_WINDOW, MATCH_DAY_WINDOW + 1)
+        ]
+    )
+    pairs = shifted.join(ncaa, on="date", how="inner")
+    if pairs.is_empty():
+        return empty
+    cache: dict[tuple[str, str], float] = {}
+
+    def sim(left: str | None, right: str | None) -> float:
+        if left is None or right is None:
+            return 0.0
+        key = (left, right)
+        if key not in cache:
+            cache[key] = similarity(left, right)
+        return cache[key]
+
+    scores = [
+        max(sim(h, eh) + sim(a, ea), sim(h, ea) + sim(a, eh)) / 2
+        for h, a, eh, ea in zip(
+            pairs["home"], pairs["away"], pairs["espn_home"], pairs["espn_away"], strict=True
+        )
+    ]
+    ranked = (
+        pairs.with_columns(pl.Series("score", scores, dtype=pl.Float64))
+        .filter(pl.col("score") >= MATCH_MIN_SIMILARITY)
+        .sort("score", descending=True)
+    )
+    taken_contests: set[str] = set()
+    taken_espn: set[str] = set()
+    matched: list[tuple[str, str]] = []
+    for contest, espn_id in zip(ranked["contest_id"], ranked["espn_game_id"], strict=True):
+        if contest in taken_contests or espn_id in taken_espn:
+            continue
+        taken_contests.add(contest)
+        taken_espn.add(espn_id)
+        matched.append((contest, espn_id))
+    if not matched:
+        return empty
+    return pl.DataFrame(
+        {"contest_id": [c for c, _ in matched], "espn_game_id": [e for _, e in matched]},
+        schema={"contest_id": pl.Utf8, "espn_game_id": pl.Utf8},
+    )
+
+
+def combined_game_map(
+    possessions: pl.DataFrame, schedule: pl.DataFrame, espn_schedule: pl.DataFrame
+) -> pl.DataFrame:
+    """Possession-file ESPN ids where present, date-and-name matches elsewhere."""
+    direct = espn_game_map(possessions)
+    missing = schedule.join(direct, on="contest_id", how="anti")
+    if missing.is_empty():
+        return direct
+    used = direct["espn_game_id"].implode()
+    remaining = espn_schedule.filter(~pl.col("game_id").cast(pl.Utf8).is_in(used))
+    return pl.concat([direct, match_espn_games(missing, remaining)])
 
 
 def build_season_games(
