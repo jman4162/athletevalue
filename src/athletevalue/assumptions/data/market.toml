@@ -1,0 +1,143 @@
+# Roster-market pay: a transparent allocation of reported roster budgets.
+#
+# No public dataset records what individual college basketball players are paid.
+# These entries let the package produce a price estimate anyway, from reported
+# budget ranges and reported pay ratios by role, and label it a scenario.
+
+["market.power_conferences"]
+description = "Conferences in the top roster-spending tier, as named by the cited study."
+unit = "conference names"
+basis = "published_third_party"
+value = ["ACC", "Big 12", "Big East", "Big Ten", "SEC"]
+
+["market.power_conferences".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "the power conferences – the Big Ten, Big 12, ACC, SEC and Big East – spend between $7 million and $10 million on a roster, on average"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.tier_b_conferences"]
+description = """Conferences assigned to the middle spending tier. The study names the tier
+but not its members, so membership is a what-if."""
+unit = "conference names"
+basis = "user_input"
+value = ["AAC", "Atlantic 10", "MWC", "WCC", "MVC"]
+
+["market.roster_budget_power_2026"]
+description = "Average men's basketball roster budget, power tier, 2025-26 (low, high)."
+unit = "USD"
+basis = "published_third_party"
+value = [7000000.0, 10000000.0]
+
+["market.roster_budget_power_2026".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "spend between $7 million and $10 million on a roster, on average"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.roster_budget_tier_b_2026"]
+description = "Men's basketball roster budget, B tier, 2025-26 (low, high)."
+unit = "USD"
+basis = "published_third_party"
+value = [2000000.0, 5000000.0]
+
+["market.roster_budget_tier_b_2026".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+section = "B Tier rosters in men's basketball range from $2 million and $5 million"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.roster_budget_tier_c_2026"]
+description = "Men's basketball roster budget, C tier, 2025-26 (low, high)."
+unit = "USD"
+basis = "published_third_party"
+value = [1000000.0, 2000000.0]
+
+["market.roster_budget_tier_c_2026".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+section = "lower-tier conferences fall into $1 million and $2 million for C Tier programs"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.budget_range_level"]
+description = "Probability mass assigned to a cited (low, high) budget range."
+unit = "probability"
+basis = "user_input"
+value = 0.8
+
+["market.role_weight_rotation"]
+description = "Pay of a rotation player relative to a starter (low, high)."
+unit = "ratio"
+basis = "published_third_party"
+value = [0.75, 0.85]
+
+["market.role_weight_rotation".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "Rotational players also earn roughly 15-25% less than starters while bench players make 30-55% less"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.role_weight_bench"]
+description = "Pay of a bench player relative to a starter (low, high)."
+unit = "ratio"
+basis = "published_third_party"
+value = [0.45, 0.70]
+
+["market.role_weight_bench".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "Rotational players also earn roughly 15-25% less than starters while bench players make 30-55% less"
+published = "2026-03-12"
+license = "factual_citation"
+
+["market.rotation_size"]
+description = "Players ranked 6th and below by playing time who count as rotation rather than bench."
+unit = "count"
+basis = "user_input"
+value = 3.0
+
+["market.min_possession_share"]
+description = """Players on the floor for less than this share of team possessions are
+treated as unpaid walk-ons and receive no allocation."""
+unit = "share"
+basis = "user_input"
+value = 0.05
+
+["market.performance_exponent"]
+description = """Exponent on a player's impact above replacement when splitting pay within
+a role. 0 pays every starter the same; 1 pays in proportion to impact."""
+unit = "dimensionless"
+basis = "user_input"
+value = 1.0
+
+["market.performance_floor"]
+description = """Impact above replacement assigned to a player whose estimate is at or below
+replacement, so a paid roster spot never allocates zero or negative dollars."""
+unit = "points per 100 possessions"
+basis = "user_input"
+value = 0.5
+
+["market.star_pay_ratio_reference"]
+description = "Reported pay of star players relative to sophomores (low, high). Validation only."
+unit = "ratio"
+basis = "published_third_party"
+value = [4.0, 7.0]
+
+["market.star_pay_ratio_reference".citation]
+kind = "press"
+title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "freshmen and senior stars are considered the biggest earners, making 4-7 times more than sophomores"
+published = "2026-03-12"
+license = "factual_citation"

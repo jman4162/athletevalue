@@ -1,0 +1,27 @@
+Data license
+============
+
+The curated data files under src/athletevalue/data/ (the deal registry, team
+crosswalks and training-source manifests) are licensed under the Creative
+Commons Attribution 4.0 International License (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Attribute as: "athletevalue contributors, https://github.com/jman4162/athletevalue".
+
+What this license does not cover
+--------------------------------
+
+athletevalue downloads third-party data at runtime into a local cache. That
+data is not part of this repository and keeps its own terms:
+
+- SportsDataverse release assets (github.com/sportsdataverse/sportsdataverse-data):
+  published from an MIT-licensed repository.
+- EADA (ope.ed.gov/athletics): U.S. federal government work.
+- Bart Torvik team results (barttorvik.com): used only to validate outputs;
+  never bundled and never used to fit shipped coefficients.
+
+Optional adapters read files that a user supplies from their own authorized
+accounts (for example KenPom or the Knight-Newhouse College Athletics
+Database). Those files, and anything fitted from them, are not distributed by
+this project. A governance test fails the build if fitting code imports those
+adapters.

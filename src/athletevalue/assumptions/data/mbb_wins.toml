@@ -1,0 +1,65 @@
+# Converting points per 100 possessions into wins.
+
+["mbb.wins.replacement_level"]
+description = """Net rating of a replacement player relative to an average player.
+
+The convention comes from NBA Box Plus/Minus. College rosters are deeper and the
+pooled low-minute coefficient from the RAPM fit is reported next to it so a
+reader can see how far the convention is from this data."""
+unit = "points per 100 possessions"
+basis = "published_third_party"
+value = -2.0
+
+["mbb.wins.replacement_level".citation]
+kind = "methodology"
+title = "Basketball-Reference glossary: Value Over Replacement Player"
+url = "https://www.basketball-reference.com/about/glossary.html"
+quote = "the points per 100 TEAM possessions that a player contributed above a replacement-level (-2.0) player"
+license = "factual_citation"
+
+["mbb.wins.pythag_exponent"]
+description = """Exponent in expected win% = ORtg^x / (ORtg^x + DRtg^x), fitted each season
+by least squares on team win percentage."""
+unit = "dimensionless"
+basis = "derived_from_data"
+
+["mbb.wins.pythag_exponent_reference"]
+description = "Published college exponents, used only to check the fitted exponent."
+unit = "dimensionless"
+basis = "published_third_party"
+value = [10.25, 11.5]
+
+["mbb.wins.pythag_exponent_reference".citation]
+kind = "methodology"
+title = "Pomeroy College Basketball Ratings (Wikipedia summary of kenpom.com methodology)"
+url = "https://en.wikipedia.org/wiki/Pomeroy_College_Basketball_Ratings"
+section = "Pythagorean formula: 11.5 originally; 10.25 beginning with the 2012 season"
+license = "factual_citation"
+
+["mbb.wins.game_margin_sd"]
+description = """Standard deviation of a game's final margin around its expected margin,
+fitted each season from team ratings and actual scores."""
+unit = "points"
+basis = "derived_from_data"
+
+["mbb.wins.simulation_draws"]
+description = "Monte Carlo draws used to propagate rating uncertainty into wins and dollars."
+unit = "count"
+basis = "modelling_choice"
+value = 4000.0
+rationale = "Monte Carlo error on an 80% interval endpoint is under 1% of its width at 4,000 draws."
+
+["mbb.wins.interval_level"]
+description = "Probability mass of reported intervals."
+unit = "probability"
+basis = "modelling_choice"
+value = 0.8
+rationale = """An 80% interval is wide enough to be honest about college-sample noise and
+narrow enough to separate a starter from a bench player."""
+
+["mbb.wins.exponent_search_bounds"]
+description = "Interval searched when fitting the Pythagorean exponent."
+unit = "dimensionless"
+basis = "modelling_choice"
+value = [2.0, 30.0]
+rationale = "Brackets every published basketball exponent (about 8 to 17) with room on both sides."

@@ -1,0 +1,134 @@
+# Men's basketball player-impact (RAPM) parameters.
+
+["mbb.impact.ridge_lambda"]
+description = """Ridge penalty on player coefficients.
+
+Matches the published SportsDataverse league-wide model so results can be
+regression-tested against it. The penalty implies a prior SD of sigma/sqrt(lambda)
+per coefficient. Cross-validation by game is available and reported alongside."""
+unit = "dimensionless"
+basis = "published_third_party"
+value = 1000.0
+
+["mbb.impact.ridge_lambda".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+quote = "Ridge regression (λ = 1000) over the possession-level on/off"
+license = "factual_citation"
+
+["mbb.impact.lambda_grid"]
+description = "Penalties tried when the lambda is chosen by grouped cross-validation."
+unit = "dimensionless"
+basis = "modelling_choice"
+value = [100.0, 300.0, 1000.0, 3000.0, 10000.0]
+rationale = """Half-decade spacing around the published value. Held-out error is flat
+near its minimum on this scale, so a finer grid changes the choice without changing
+the error."""
+
+["mbb.impact.cv_folds"]
+description = "Folds for cross-validation, grouped by game so no game is split."
+unit = "count"
+basis = "modelling_choice"
+value = 5.0
+rationale = "Standard k for ~6,000 games; each fold still holds every team."
+
+["mbb.impact.min_possessions"]
+description = """Players below this many offensive-plus-defensive possessions / 2 share a
+single pooled column instead of getting their own coefficient."""
+unit = "possessions"
+basis = "modelling_choice"
+value = 100.0
+rationale = """About three full games. Below it the ridge estimate is almost entirely
+prior; pooling keeps those possessions in the fit and yields an empirical
+low-minute baseline to compare with the replacement-level convention."""
+
+["mbb.impact.drop_garbage_time"]
+description = "Exclude possessions the source flags as garbage time."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """Lineups in decided games do not try to win the possession, which biases
+coefficients of deep-bench players. The flag comes from the source data."""
+
+["mbb.impact.intercept_band"]
+description = "Plausible fitted intercept (points per 100 possessions); a scale-bug gate."
+unit = "points per 100 possessions"
+basis = "published_third_party"
+value = [95.0, 112.0]
+
+["mbb.impact.intercept_band".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+section = "intercept era band (scale-bug catcher) | [95, 112]"
+license = "factual_citation"
+
+["mbb.impact.sigma2_band"]
+description = "Plausible residual variance per possession, times 100^2; an SE scale gate."
+unit = "(points per 100 possessions)^2"
+basis = "published_third_party"
+value = [11000.0, 15000.0]
+
+["mbb.impact.sigma2_band".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+section = "σ̂² era band (SE scale-bug catcher) | [11000, 15000]"
+license = "factual_citation"
+
+["mbb.impact.home_court_band"]
+description = "Plausible home-court advantage, points per 100 possessions; a sign/scale gate."
+unit = "points per 100 possessions"
+basis = "published_third_party"
+value = [1.0, 4.0]
+
+["mbb.impact.home_court_band".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+section = "home-court advantage band | [1.0, 4.0]"
+license = "factual_citation"
+
+["mbb.impact.reference_spearman_min"]
+description = """Minimum Spearman correlation between this package's net RAPM and the
+SportsDataverse league-wide RAPM, for players above the comparison threshold."""
+unit = "correlation"
+basis = "modelling_choice"
+value = 0.9
+rationale = """Both fits use the same possessions and penalty but differ in pooling,
+garbage-time handling and neutral sites, so identical rankings are not expected.
+Below 0.9 a design-matrix bug is more likely than a modelling difference."""
+
+["mbb.impact.reference_min_possessions"]
+description = "Offensive possessions required for a player to enter the reference comparison."
+unit = "possessions"
+basis = "modelling_choice"
+value = 500.0
+rationale = "Roughly a third of a starter's season; below it both fits are prior-dominated."
+
+["mbb.impact.torvik_spearman_min"]
+description = "Minimum Spearman correlation of team net rating with Torvik AdjOE minus AdjDE."
+unit = "correlation"
+basis = "published_third_party"
+value = 0.93
+
+["mbb.impact.torvik_spearman_min".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+section = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
+license = "factual_citation"
+
+["mbb.impact.torvik_min_teams"]
+description = "Teams that must be matched to Torvik for the team-rating comparison to count."
+unit = "count"
+basis = "published_third_party"
+value = 250.0
+
+["mbb.impact.torvik_min_teams".citation]
+kind = "methodology"
+title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
+url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
+section = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
+license = "factual_citation"

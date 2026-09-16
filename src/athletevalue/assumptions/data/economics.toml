@@ -1,0 +1,65 @@
+# Program economics: what a win or a tournament bid is worth to a school.
+
+["economics.revenue_share_cap_2026"]
+description = "House v. NCAA revenue-sharing cap per school, 2025-26."
+unit = "USD"
+basis = "published_third_party"
+value = 20500000.0
+
+["economics.revenue_share_cap_2026".citation]
+kind = "press"
+title = "ESPN: Judge OK's $2.8B settlement, paving way for colleges to pay athletes"
+url = "https://www.espn.com/college-sports/story/_/id/45467505/judge-grants-final-approval-house-v-ncaa-settlement"
+quote = "The annual cap is expected to start at roughly $20.5 million per school in 2025-26 and increase every year during the decade-long deal."
+published = "2025-06-06"
+license = "factual_citation"
+
+["economics.tournament_unit_value"]
+description = """Total value of one NCAA men's tournament unit, paid to the conference in
+annual installments. Undiscounted."""
+unit = "USD"
+basis = "published_third_party"
+value = 2000000.0
+
+["economics.tournament_unit_value".citation]
+kind = "press"
+title = "Yahoo Sports: Here's how NCAA tournament schools make money in March Madness"
+url = "https://sports.yahoo.com/articles/ncaa-tournament-schools-money-march-172252800.html"
+quote = "Each of the now 135 units up for grabs in recent years have been worth about $2 million."
+published = "2026-03-17"
+license = "factual_citation"
+
+["economics.conference_unit_share_multiplier"]
+description = """Multiplier on an equal split of tournament-unit money among conference
+members. 1.0 is an equal split; conferences that reward the earning school use more."""
+unit = "multiplier"
+basis = "user_input"
+value = 1.0
+
+["economics.bootstrap_draws"]
+description = "School-cluster bootstrap replicates for the revenue model."
+unit = "count"
+basis = "modelling_choice"
+value = 400.0
+rationale = "Enough to estimate an 80% interval of a coefficient to within a few percent."
+
+["economics.panel_first_season"]
+description = "First EADA season used in the revenue panel (needs one lagged season)."
+unit = "season"
+basis = "modelling_choice"
+value = 2012.0
+rationale = "Possession data start in 2011, so 2012 is the first season with a lagged outcome."
+
+["economics.panel_min_seasons"]
+description = "Schools need this many non-allocated seasons to enter the revenue fit."
+unit = "count"
+basis = "modelling_choice"
+value = 4.0
+rationale = "School fixed effects with two lags are not identified from fewer seasons."
+
+["economics.revenue_reference_seasons"]
+description = "Recent seasons averaged to set a school's revenue base for dollars per win."
+unit = "count"
+basis = "modelling_choice"
+value = 3.0
+rationale = "Smooths one-off accounting changes in EADA without reaching back past a coaching era."
