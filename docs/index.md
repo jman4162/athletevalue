@@ -149,7 +149,7 @@ an import-linter contract that stops fitting code from importing it.
 - **Tournament flags before 2023 come from matching ESPN games by date and team
   name.** A few First Four games each season go unmatched.
 
-[METHODOLOGY.md](METHODOLOGY.md) gives the equations, estimates and caveats for each layer.
+[the methodology](methodology.md) gives the equations, estimates and caveats for each layer.
 
 ## Roadmap
 
@@ -161,7 +161,7 @@ an import-linter contract that stops fitting code from importing it.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Sourced deals for the registry are the most
+See [CONTRIBUTING](contributing.md). Sourced deals for the registry are the most
 useful contribution; the rules are in
 [src/athletevalue/data/deal_registry/README.md](src/athletevalue/data/deal_registry/README.md).
 

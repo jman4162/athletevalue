@@ -1,0 +1,35 @@
+name: Live-data regression
+
+# Fits full seasons from the public sources and checks every validation gate.
+# Weekly, because upstream release assets can be re-cut without notice.
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ATHLETEVALUE_CACHE_DIR: ${{ github.workspace }}/.athletevalue-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Restore download cache
+        uses: actions/cache@v4
+        with:
+          path: .athletevalue-cache
+          key: athletevalue-data-${{ hashFiles('src/athletevalue/sources/**') }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Network tests
+        run: uv run pytest -m network -q

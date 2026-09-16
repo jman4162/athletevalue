@@ -1,0 +1,115 @@
+"""The whole valuation pipeline on a synthetic season, with no downloads."""
+
+from __future__ import annotations
+
+import numpy as np
+import polars as pl
+import pytest
+from scipy.stats import spearmanr
+
+from athletevalue.economics.revenue import RevenueModel
+from athletevalue.economics.tournament import BidModel
+from athletevalue.schemas.evidence import EvidenceStatus
+from athletevalue.valuation.economy import EconomicsModel
+from athletevalue.valuation.player import team_table, value_player
+from athletevalue.valuation.season import assemble_season
+from athletevalue.valuation.team import team_draws
+from athletevalue.valuation.validate import validate_season
+from tests.fixtures.raw_season import make_raw_season
+
+
+@pytest.fixture(scope="module")
+def season(registry):
+    frames, truth = make_raw_season()
+    return assemble_season(frames, registry), truth
+
+
+@pytest.fixture(scope="module")
+def economics(season):
+    model, _ = season
+    teams = model.teams["team"].to_list()
+    panel = pl.DataFrame(
+        {"team": teams, "season": 2025, "rev_men": [12e6 if "Big" in t else 2e6 for t in teams]}
+    )
+    return EconomicsModel(
+        panel=panel,
+        outcomes=pl.DataFrame(),
+        revenue=RevenueModel(
+            point=np.zeros(4),
+            draws=np.tile([0.004, 0.002, 0.03, 0.02], (20, 1)),
+            n_obs=1,
+            n_schools=1,
+            first_season=2012,
+            last_season=2025,
+        ),
+        bids=BidModel(coef=np.array([-10.0, 15.0, -6.0, 14.0]), n_obs=1),
+        units_per_bid=1.9,
+        power_conferences=frozenset({"Big Ten"}),
+        reference_seasons=3,
+        sources=(),
+    )
+
+
+def test_season_fit_recovers_player_order(season):
+    model, truth = season
+    table = model.rapm.table.filter(~pl.col("pooled"))
+    # About 1,000 possessions per player leaves the posterior SD (~3.6) above the true
+    # spread (3.0), so player order is recovered only loosely; team strength clearly.
+    rho = spearmanr(table["net"], [truth[a] for a in table["athlete_id"]])[0]
+    assert rho > 0.25
+    by_conference = model.teams.group_by("conference").agg(pl.col("adj_net").mean())
+    nets = dict(by_conference.iter_rows())
+    assert nets["Big Ten"] - nets["WCC"] > 3
+    assert 95 < model.rapm.intercept < 115
+    assert model.teams.height == 8
+    assert model.teams.filter(pl.col("ncaa_bid")).height >= 2
+    assert model.margin_sd > 0
+
+
+def test_validation_gates_run(season, registry):
+    model, _ = season
+    reference = model.rapm.table.select(
+        pl.col("athlete_id").alias("player_id"), pl.col("net").alias("rapm_net"), "off_poss"
+    )
+    torvik = model.teams.select("team", pl.col("adj_net").alias("adj_em"))
+    report = validate_season(model, registry, reference_rapm=reference, torvik=torvik)
+    names = {g.name: g for g in report.gates}
+    assert names["spearman_team_net_vs_torvik"].value == pytest.approx(1.0)
+    assert names["torvik_teams_matched"].passed is False  # 8 teams is below the 250 minimum
+    assert any("Pythagorean" in n for n in report.notes)
+
+
+def test_team_draws_and_table(season, economics, registry):
+    model, _ = season
+    team = model.teams.filter(pl.col("conference") == "Big Ten")["team"][0]
+    draws = team_draws(model, economics, registry, team, seed=1)
+    assert draws.budget is not None and draws.allocation is not None and draws.program is not None
+    np.testing.assert_allclose(draws.allocation.pay.sum(axis=1), draws.budget.draws)
+    table = team_table(draws)
+    assert set(table["quadrant"]) <= {"undervalued", "fair_star", "overvalued", "low_priority"}
+    assert table["price"].sum() == pytest.approx(float(np.median(draws.budget.draws)), rel=0.25)
+
+
+def test_value_player_end_to_end(season, economics, registry):
+    model, _ = season
+    name = model.rapm.table.filter(~pl.col("pooled"))["name"][0]
+    valuation = value_player(model, economics, registry, name, seed=2)
+    assert valuation.athletic_impact.status is EvidenceStatus.ESTIMATED
+    assert (
+        valuation.program_value is not None
+        and valuation.program_value.status is EvidenceStatus.SCENARIO
+    )
+    assert valuation.roster_market_value is not None and valuation.surplus is not None
+    assert valuation.price_basis == "allocation"
+    assert valuation.war.lower <= valuation.war.value <= valuation.war.upper
+    assert "Drivers" in valuation.summary()
+    assert "market.performance_exponent" in valuation.assumptions_used
+
+
+def test_market_is_absent_before_revenue_sharing(registry):
+    frames, _ = make_raw_season(season=2025)
+    model = assemble_season(frames, registry)
+    name = model.rapm.table.filter(~pl.col("pooled"))["name"][0]
+    valuation = value_player(model, None, registry, name)
+    assert valuation.roster_market_value is None and valuation.program_value is None
+    assert any("roster-budget" in w for w in valuation.warnings)

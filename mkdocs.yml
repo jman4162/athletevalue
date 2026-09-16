@@ -1,0 +1,8 @@
+site_name: athletevalue
+repo_url: https://github.com/jman4162/athletevalue
+theme:
+  name: material
+nav:
+  - Overview: index.md
+  - Methodology: methodology.md
+  - Contributing: contributing.md

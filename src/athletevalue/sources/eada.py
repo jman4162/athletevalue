@@ -10,6 +10,7 @@ package's season key.
 from __future__ import annotations
 
 import json
+import warnings
 import zipfile
 
 import polars as pl
@@ -74,7 +75,11 @@ class EadaClient:
         with zipfile.ZipFile(archive.path) as bundle:
             member = _school_member(bundle.namelist(), season)
             content = bundle.read(member)
-        frame = pl.read_excel(content, columns=list(SCHOOL_COLUMNS), infer_schema_length=None)
+        with warnings.catch_warnings():
+            # polars' own calamine reader calls a from_arrow overload it has deprecated;
+            # the warning is about polars internals, not this call.
+            warnings.filterwarnings("ignore", message=r"from_arrow\(", category=FutureWarning)
+            frame = pl.read_excel(content, columns=list(SCHOOL_COLUMNS), infer_schema_length=None)
         frame = frame.with_columns(
             pl.col("unitid").cast(pl.Int64),
             *(
