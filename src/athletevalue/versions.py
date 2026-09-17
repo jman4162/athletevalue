@@ -7,6 +7,6 @@ invalidates stale results instead of silently reusing them.
 
 from __future__ import annotations
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 
 MODEL_VERSION = "mbb-v0.1.0"

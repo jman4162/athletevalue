@@ -127,7 +127,7 @@ the reference model uses. Run `athletevalue validate` to reproduce.
 | Press and methodology pages | Roster budgets, tournament unit value, conventions | Cited facts, see `athletevalue assumptions` |
 
 Code is MIT. Curated data in `src/athletevalue/data` (the team crosswalk and the
-deal registry) is CC BY 4.0; see [LICENSE-DATA](LICENSE-DATA). Data downloaded at
+deal registry) is CC BY 4.0; see [LICENSE-DATA](https://github.com/jman4162/athletevalue/blob/main/LICENSE-DATA). Data downloaded at
 runtime stays under its own terms and is never redistributed.
 
 KenPom and the Knight-Newhouse College Athletics Database restrict redistribution.
@@ -149,7 +149,7 @@ an import-linter contract that stops fitting code from importing it.
 - **Tournament flags before 2023 come from matching ESPN games by date and team
   name.** A few First Four games each season go unmatched.
 
-[the methodology](methodology.md) gives the equations, estimates and caveats for each layer.
+[METHODOLOGY.md](methodology.md) gives the equations, estimates and caveats for each layer.
 
 ## Roadmap
 
@@ -161,11 +161,11 @@ an import-linter contract that stops fitting code from importing it.
 
 ## Contributing
 
-See [CONTRIBUTING](contributing.md). Sourced deals for the registry are the most
+See [CONTRIBUTING.md](contributing.md). Sourced deals for the registry are the most
 useful contribution; the rules are in
-[src/athletevalue/data/deal_registry/README.md](src/athletevalue/data/deal_registry/README.md).
+[src/athletevalue/data/deal_registry/README.md](https://github.com/jman4162/athletevalue/blob/main/src/athletevalue/data/deal_registry/README.md).
 
 ## Citation
 
-See [CITATION.cff](CITATION.cff). Estimates are research outputs; read
-[DISCLAIMER.md](DISCLAIMER.md) before using them for decisions.
+See [CITATION.cff](https://github.com/jman4162/athletevalue/blob/main/CITATION.cff). Estimates are research outputs; read
+[DISCLAIMER.md](https://github.com/jman4162/athletevalue/blob/main/DISCLAIMER.md) before using them for decisions.

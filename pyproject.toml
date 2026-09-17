@@ -1,6 +1,6 @@
 [project]
 name = "athletevalue"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Open models that separate what a college athlete is worth to a program from what the market pays"
 readme = "README.md"
 requires-python = ">=3.12"
