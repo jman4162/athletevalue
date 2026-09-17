@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import numpy as np
 import polars as pl
 
-from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.constants import DECILES, PLAYERS_ON_COURT
 from athletevalue.valuation.economy import EconomicsModel
 from athletevalue.valuation.season import SeasonModel
@@ -139,29 +138,15 @@ def team_war_table(model: SeasonModel, players: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def bid_calibration(
-    economics: EconomicsModel, registry: AssumptionRegistry, *, bins: int = DECILES
-) -> pl.DataFrame:
+def bid_calibration(economics: EconomicsModel, *, bins: int = DECILES) -> pl.DataFrame:
     """Predicted and observed bid rates by decile of predicted probability.
 
-    Scored on the rows the bid model was fitted on, so this checks the logistic form,
-    not out-of-sample accuracy.
+    Read from ``economics.bid_holdout``, where each season is scored by a model
+    fitted on the other seasons, so this measures accuracy on teams the fit never
+    saw rather than the shape of the curve it was fitted to.
     """
-    excluded = [int(s) for s in registry.get("economics.excluded_seasons").numbers()]
-    sample = economics.outcomes.filter(
-        (pl.col("games") > 0)
-        & ~pl.col("season").is_in(pl.Series(excluded, dtype=pl.Int64).implode())
-    )
-    win_pct = (sample["wins"] / sample["games"]).cast(pl.Float64).to_numpy()
-    power = sample["conference"].is_in(sorted(economics.power_conferences)).to_numpy()
-    predicted = np.where(
-        power,
-        economics.bids.probability(win_pct, True),
-        economics.bids.probability(win_pct, False),
-    )
-    frame = pl.DataFrame(
-        {"predicted": predicted, "observed": sample["ncaa_bid"].cast(pl.Float64).to_numpy()}
-    )
+    frame = economics.bid_holdout.select("predicted", "observed")
+    predicted = frame["predicted"].to_numpy()
     order = np.argsort(predicted, kind="stable")
     decile = np.empty(len(predicted), dtype=np.int64)
     decile[order] = np.arange(len(predicted)) * bins // len(predicted)

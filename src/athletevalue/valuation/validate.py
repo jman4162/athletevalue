@@ -287,7 +287,7 @@ def extended_gates(
                 f"of {economics.revenue.draws.shape[0]} school bootstrap draws",
             )
         )
-        calibration = bid_calibration(economics, registry)
+        calibration = bid_calibration(economics)
         gaps = (calibration["predicted"] - calibration["observed"]).abs().to_numpy()
         gap = float(gaps.max())
         gates.append(
@@ -297,7 +297,7 @@ def extended_gates(
                 None,
                 registry.get("economics.bid_calibration_max_gap").scalar(),
                 f"{int(calibration['n'].sum())} team-seasons in {calibration.height} "
-                "deciles, in sample",
+                "deciles, leave-one-season-out",
             )
         )
     return tuple(gates), tuple(notes)

@@ -21,9 +21,10 @@ from athletevalue.impact.cv import cv_with_folds, cv_with_prior, game_folds
 from athletevalue.valuation.checks import ReturningPlayers, bid_calibration
 from athletevalue.valuation.economy import EconomicsModel
 from athletevalue.valuation.season import SeasonModel
+from athletevalue.valuation.team import unit_terms
 from athletevalue.valuation.validate import ValidationReport
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 FORBIDDEN_KEYS = frozenset({"name", "athlete_id", "person_id", "player", "athlete_name"})
 """Keys that would identify a person; ``assert_anonymous`` rejects any of them."""
 
@@ -179,7 +180,7 @@ def economics_payload(economics: EconomicsModel, registry: AssumptionRegistry) -
             "interval": [float(v) for v in np.quantile(draws, tails)],
         }
 
-    calibration = bid_calibration(economics, registry)
+    calibration = bid_calibration(economics)
     return {
         "first_season": revenue.first_season,
         "last_season": revenue.last_season,
@@ -195,6 +196,9 @@ def economics_payload(economics: EconomicsModel, registry: AssumptionRegistry) -
             "win_effect_two_season": sorted(revenue.win_effect().tolist()),
         },
         "units_per_bid": economics.units_per_bid,
+        "units_per_bid_field": economics.units_per_bid_field,
+        "unit_pv_factor": unit_terms(registry, economics.units_per_bid).pv_factor(),
+        "bid_ridge_lambda": registry.get("economics.bid_ridge_lambda").scalar(),
         "bid_calibration": {
             "predicted": calibration["predicted"].to_list(),
             "observed": calibration["observed"].to_list(),

@@ -2,7 +2,8 @@
 
 ["economics.tournament_unit_value"]
 description = """Total value of one NCAA men's tournament unit, paid to the conference in
-annual installments. Undiscounted."""
+annual installments. The model discounts those installments to present value; see
+economics.unit_payout_installments and economics.unit_discount_rate."""
 unit = "USD"
 basis = "published_third_party"
 value = 2000000.0
@@ -14,6 +15,62 @@ url = "https://sports.yahoo.com/articles/ncaa-tournament-schools-money-march-172
 quote = "Each of the now 135 units up for grabs in recent years have been worth about $2 million."
 published = "2026-03-17"
 license = "factual_citation"
+
+["economics.unit_payout_installments"]
+description = """Annual installments a tournament unit is paid in. The unit value is the
+total of these, so the model discounts them rather than counting the whole sum at once."""
+unit = "years"
+basis = "published_third_party"
+value = 6.0
+
+["economics.unit_payout_installments".citation]
+kind = "press"
+title = "Deseret News, via Yahoo Sports: Here's how NCAA tournament schools make money in March Madness"
+url = "https://sports.yahoo.com/articles/ncaa-tournament-schools-money-march-172252800.html"
+quote = "Conferences distribute the money, roughly $350,000 a year over six years, to their schools as they see fit."
+published = "2026-03-17"
+license = "factual_citation"
+
+["economics.unit_payout_first_year"]
+description = """Years between the tournament and the first installment. Units earned in
+one tournament are distributed the following April, so the first dollar arrives in the
+next fiscal year, not the season being valued."""
+unit = "years"
+basis = "modelling_choice"
+value = 1.0
+rationale = """The NCAA Division I revenue distribution plan pays the basketball
+performance fund each April for units earned in previous tournaments, which falls in the
+fiscal year after the season. Stated as a modelling choice because no page quotable under
+the citation rules pins the lag itself."""
+
+["economics.unit_discount_rate"]
+description = """Annual rate used to bring later unit installments to present value, and
+to discount next season's revenue carry-over by one year."""
+unit = "rate per year"
+basis = "user_input"
+value = 0.05
+
+["economics.unit_revenue_overlap"]
+description = """How the tournament-unit component and the EADA bid effect are kept from
+counting the same money. Units earned in one tournament are paid from the next April, so
+the same-season bid effect cannot contain them and the annual figure never overlaps; the
+first installment can sit inside next season's reported revenue. One of:
+"next_season_installment" subtracts that installment from the two-season figure;
+"none" assumes the filings exclude unit money; "exclude_units" drops the unit component
+from the headline figures and reports it alongside."""
+unit = "policy"
+basis = "user_input"
+value = "next_season_installment"
+
+["economics.bid_ridge_lambda"]
+description = "Ridge penalty on the bid model's coefficients, the intercept excluded."
+unit = "penalty"
+basis = "modelling_choice"
+value = 0.01
+rationale = """Present for numerical stability, not shrinkage: leaving one season out can
+come close to separating the data, where an unpenalised fit runs coefficients off to
+large values. The coefficients are on the natural win-percentage scale and are near 15,
+so a penalty of 1 already distorts calibration; at 0.01 no coefficient moves materially."""
 
 ["economics.conference_unit_share_multiplier"]
 description = """Multiplier on an equal split of tournament-unit money among conference

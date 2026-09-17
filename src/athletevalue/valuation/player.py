@@ -408,6 +408,7 @@ def _drivers(
             wins=int(team_row["wins"]),
             conference=draws.conference,
             members=int(team_row["n_conference_members"]),
+            sos=float(team_row["sos"]),
         )
         if base is not None:
             latest = economics.panel.filter(pl.col("season") == economics.panel["season"].max())

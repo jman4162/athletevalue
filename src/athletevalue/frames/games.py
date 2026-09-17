@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from athletevalue.constants import EVEN_WIN_PCT
 from athletevalue.frames.columns import (
     ESPN_SCHEDULE_COLUMNS,
     MATCH_DAY_WINDOW,
@@ -24,11 +25,12 @@ from athletevalue.identity.names import similarity
 @dataclass(frozen=True)
 class SeasonGames:
     games: pl.DataFrame
-    """contest_id, home, away, home_score, away_score, neutral, ncaa_tournament."""
+    """contest_id, home, away, home_score, away_score, neutral, ncaa_tournament,
+    ncaa_final."""
 
     teams: pl.DataFrame
     """team, conference, games, wins, losses, points_for, points_against,
-    ncaa_bid, ncaa_games, ncaa_wins."""
+    ncaa_bid, ncaa_games, ncaa_wins, ncaa_units, sos."""
 
 
 def espn_game_map(possessions: pl.DataFrame) -> pl.DataFrame:
@@ -167,13 +169,17 @@ def build_season_games(
         )
     )
 
+    games = games.with_columns(mark_tournament_final(games))
+
     long = pl.concat(
         [
             games.select(
                 pl.col(team).alias("team"),
+                pl.col(other).alias("opponent"),
                 pl.col(f"{team}_score").alias("points_for"),
                 pl.col(f"{other}_score").alias("points_against"),
                 "ncaa_tournament",
+                "ncaa_final",
             )
             for team, other in (("home", "away"), ("away", "home"))
         ]
@@ -187,19 +193,72 @@ def build_season_games(
         pl.col("ncaa_tournament").any().alias("ncaa_bid"),
         pl.col("ncaa_tournament").sum().cast(pl.Int64).alias("ncaa_games"),
         (pl.col("ncaa_tournament") & pl.col("won")).sum().cast(pl.Int64).alias("ncaa_wins"),
+        (pl.col("ncaa_tournament") & ~pl.col("ncaa_final"))
+        .sum()
+        .cast(pl.Int64)
+        .alias("ncaa_units"),
     )
     teams = (
         team_ids.select("team", "conference")
         .unique(subset=["team"])
         .join(records, on="team", how="left")
+        .join(strength_of_schedule(long, records), on="team", how="left")
         .with_columns(
             pl.col("games").fill_null(0),
             pl.col("wins").fill_null(0),
             pl.col("ncaa_bid").fill_null(False),
             pl.col("ncaa_games").fill_null(0),
             pl.col("ncaa_wins").fill_null(0),
+            pl.col("ncaa_units").fill_null(0),
+            pl.col("sos").fill_null(EVEN_WIN_PCT),
         )
         .with_columns((pl.col("games") - pl.col("wins")).alias("losses"))
         .sort("team")
     )
     return SeasonGames(games=games, teams=teams)
+
+
+def mark_tournament_final(games: pl.DataFrame) -> pl.Expr:
+    """``ncaa_final``: the championship game, the one tournament game that earns no unit.
+
+    A conference earns a unit for every tournament game a member plays except the
+    final, so the two finalists each have one game that is not a unit. The final is
+    the latest-dated tournament game; a season whose dates are all missing marks
+    none, which counts one unit too many for the two finalists.
+    """
+    played = pl.col("game_date").str.strptime(pl.Date, "%m/%d/%Y", strict=False)
+    tournament = games.filter(pl.col("ncaa_tournament"))
+    if tournament.is_empty():
+        return pl.lit(False).alias("ncaa_final")
+    last = tournament.select(played.max()).item()
+    if last is None:
+        return pl.lit(False).alias("ncaa_final")
+    return (
+        (pl.col("ncaa_tournament") & (played == pl.lit(last))).fill_null(False).alias("ncaa_final")
+    )
+
+
+def strength_of_schedule(long: pl.DataFrame, records: pl.DataFrame) -> pl.DataFrame:
+    """team, sos: the mean over a team's games of the opponent's record without that game.
+
+    Removing the game itself keeps a team's own result out of its own schedule
+    strength. An opponent with no other game contributes nothing, and a team with no
+    such opponent gets no row, which the caller reads as an even schedule. Opponent
+    records count only games in this file, so a non-D1 opponent is measured on the
+    D1 games it played.
+    """
+    opponents = records.select(
+        pl.col("team").alias("opponent"),
+        pl.col("games").alias("opponent_games"),
+        pl.col("wins").alias("opponent_wins"),
+    )
+    return (
+        long.join(opponents, on="opponent", how="inner")
+        .with_columns(
+            (pl.col("opponent_games") - 1).alias("other_games"),
+            (pl.col("opponent_wins") - (~pl.col("won")).cast(pl.Int64)).alias("other_wins"),
+        )
+        .filter(pl.col("other_games") > 0)
+        .group_by("team")
+        .agg((pl.col("other_wins") / pl.col("other_games")).mean().alias("sos"))
+    )

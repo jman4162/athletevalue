@@ -9,7 +9,7 @@ import pytest
 from athletevalue.api import Session
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.economics.revenue import RevenueModel
-from athletevalue.economics.tournament import BidModel
+from athletevalue.economics.tournament import BidModel, holdout_bid_predictions
 from athletevalue.sources.cache import ArtifactCache
 from athletevalue.valuation.checks import (
     bid_calibration,
@@ -68,20 +68,31 @@ def test_player_and_team_war_tables(seasons):
 
 def _economics(teams: list[str]) -> EconomicsModel:
     rng = np.random.default_rng(0)
-    win_pct = rng.uniform(0.2, 0.9, 400)
-    games = np.full(400, 30)
-    power = rng.random(400) < 0.3
-    bids = BidModel(coef=np.array([-10.0, 15.0, -6.0, 14.0]), n_obs=400)
-    probability = np.where(power, bids.probability(win_pct, True), bids.probability(win_pct, False))
+    n = 400
+    win_pct = rng.uniform(0.2, 0.9, n)
+    games = np.full(n, 30)
+    power = rng.random(n) < 0.3
+    sos = rng.uniform(0.4, 0.6, n)
+    bids = BidModel(coef=np.array([-10.0, 15.0, -6.0, 14.0, 2.0]), n_obs=n)
+    probability = np.where(
+        power, bids.probability(win_pct, True, sos), bids.probability(win_pct, False, sos)
+    )
+    bid = rng.random(n) < probability
     outcomes = pl.DataFrame(
         {
-            "team": [teams[k % len(teams)] for k in range(400)],
-            "season": 2015,
+            "team": [teams[k % len(teams)] for k in range(n)],
+            # Two seasons, because leave-one-season-out calibration needs one to hold out.
+            "season": np.where(np.arange(n) % 2 == 0, 2015, 2016),
             "conference": np.where(power, "Big Ten", "WCC"),
             "games": games,
             "wins": np.round(win_pct * games).astype(int),
-            "ncaa_bid": rng.random(400) < probability,
+            "sos": sos,
+            "ncaa_bid": bid,
+            "ncaa_units": np.where(bid, 1, 0),
         }
+    )
+    holdout = holdout_bid_predictions(
+        outcomes, power_conferences=frozenset({"Big Ten"}), excluded_seasons=frozenset()
     )
     return EconomicsModel(
         panel=pl.DataFrame(),
@@ -95,15 +106,17 @@ def _economics(teams: list[str]) -> EconomicsModel:
             last_season=2025,
         ),
         bids=bids,
-        units_per_bid=1.9,
+        bid_holdout=holdout,
+        units_per_bid=1.0,
+        units_per_bid_field=1.9,
         power_conferences=frozenset({"Big Ten"}),
         reference_seasons=3,
         sources=(),
     )
 
 
-def test_bid_calibration_of_a_correct_model_is_close(registry):
-    table = bid_calibration(_economics(["A", "B"]), registry)
+def test_bid_calibration_of_a_correct_model_is_close():
+    table = bid_calibration(_economics(["A", "B"]))
     assert table.height == 10
     assert int(table["n"].sum()) == 400
     assert float((table["predicted"] - table["observed"]).abs().max()) < 0.2

@@ -41,10 +41,20 @@ def test_pyproject_matches_the_package():
 
 
 def test_model_version_tracks_the_package_version():
-    """``mbb-v<package version>``, optionally with a development suffix."""
+    """``mbb-v<version>``, where a ``.devN`` build may already name the next release.
+
+    Between releases the model version leads: bumping it is what invalidates derived
+    caches when a modelling change lands, and that happens before the version bump.
+    A released build must name exactly the version it ships as.
+    """
     match = re.fullmatch(r"mbb-v(?P<base>\d+\.\d+\.\d+)(?P<dev>\.dev\d+)?", MODEL_VERSION)
     assert match is not None, f"MODEL_VERSION {MODEL_VERSION!r} is not mbb-vX.Y.Z[.devN]"
-    assert match.group("base") == __version__, "MODEL_VERSION and __version__ disagree"
+    base = tuple(int(part) for part in match.group("base").split("."))
+    shipped = tuple(int(part) for part in __version__.split("."))
+    if match.group("dev"):
+        assert base >= shipped, f"{MODEL_VERSION} is behind version {__version__}"
+    else:
+        assert base == shipped, "MODEL_VERSION and __version__ disagree"
 
 
 @released_only

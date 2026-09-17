@@ -19,6 +19,10 @@ FIRST_NIL_SEASON = 2022
 FIRST_REVENUE_SHARE_SEASON = 2026
 """House v. NCAA revenue sharing began 2025-07-01, so 2025-26 is the first season."""
 
+EVEN_WIN_PCT = 0.5
+"""A .500 record: the centre of the win-percentage scale, used where a team has no
+rated opponents to average over."""
+
 EPS = 1e-12
 """Guard against division by zero in rate calculations."""
 

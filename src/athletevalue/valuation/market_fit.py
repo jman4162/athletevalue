@@ -73,6 +73,7 @@ def player_features(
                 wins=int(team_row["wins"]),
                 conference=team_row["conference"],
                 members=int(team_row["n_conference_members"]),
+                sos=float(team_row["sos"]),
             )
             base = None if program is None else program.revenue_base
         roster = season.roster(team).with_columns(

@@ -8,7 +8,12 @@ import numpy as np
 import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
-from athletevalue.economics.program_value import ProgramValueDraws, program_value_draws
+from athletevalue.economics.program_value import (
+    ProgramValueDraws,
+    UnitOverlapPolicy,
+    UnitTerms,
+    program_value_draws,
+)
 from athletevalue.market.allocation import Allocation, AllocationRules, allocate
 from athletevalue.market.budget import MarketUnavailableError, RosterBudget, roster_budget
 from athletevalue.schemas.evidence import EvidenceStatus
@@ -49,6 +54,7 @@ WAR_ASSUMPTIONS = (
     "mbb.wins.simulation_draws",
 )
 PROGRAM_ASSUMPTIONS = (
+    "economics.bid_ridge_lambda",
     "economics.excluded_seasons",
     "economics.panel_first_season",
     "economics.panel_min_seasons",
@@ -56,7 +62,27 @@ PROGRAM_ASSUMPTIONS = (
     "economics.revenue_reference_seasons",
     "market.power_conferences",
 )
-UNIT_ASSUMPTIONS = ("economics.tournament_unit_value", "economics.conference_unit_share_multiplier")
+UNIT_ASSUMPTIONS = (
+    "economics.tournament_unit_value",
+    "economics.conference_unit_share_multiplier",
+    "economics.unit_payout_installments",
+    "economics.unit_payout_first_year",
+    "economics.unit_discount_rate",
+    "economics.unit_revenue_overlap",
+)
+
+
+def unit_terms(registry: AssumptionRegistry, units_per_bid: float) -> UnitTerms:
+    """The tournament-unit payout, its schedule and how it is kept off the bid effect."""
+    return UnitTerms(
+        unit_value=registry.get("economics.tournament_unit_value").scalar(),
+        units_per_bid=units_per_bid,
+        share_multiplier=registry.get("economics.conference_unit_share_multiplier").scalar(),
+        discount_rate=registry.get("economics.unit_discount_rate").scalar(),
+        installments=int(registry.get("economics.unit_payout_installments").scalar()),
+        first_year=int(registry.get("economics.unit_payout_first_year").scalar()),
+        overlap=UnitOverlapPolicy(registry.get("economics.unit_revenue_overlap").text()),
+    )
 ALLOCATION_ASSUMPTIONS = (
     "market.role_weight_rotation",
     "market.role_weight_bench",
@@ -143,21 +169,19 @@ def team_draws(
             wins=int(team_row["wins"]),
             conference=conference,
             members=int(team_row["n_conference_members"]),
+            sos=float(team_row["sos"]),
         )
         if program_context is None:
             notes.append(f"EADA reports no men's basketball revenue for {team}")
         else:
+            units = unit_terms(registry, economics.units_per_bid)
             program = {
                 athlete: program_value_draws(
                     draws,
                     program_context,
                     economics.revenue,
                     economics.bids,
-                    unit_value=registry.get("economics.tournament_unit_value").scalar(),
-                    units_per_bid=economics.units_per_bid,
-                    share_multiplier=registry.get(
-                        "economics.conference_unit_share_multiplier"
-                    ).scalar(),
+                    units=units,
                     rng=rng,
                 )
                 for athlete, draws in war.items()

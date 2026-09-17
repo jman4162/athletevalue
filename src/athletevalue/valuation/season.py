@@ -56,9 +56,10 @@ class SeasonModel:
     player_box: pl.DataFrame | None
     """Per-game box scores, kept so validation can rebuild the prior from training games."""
     teams: pl.DataFrame
-    """team, conference, games, wins, losses, ncaa_bid, ncaa_games, ncaa_wins, ortg,
-    drtg, pace, adj_off, adj_def, adj_net, adj_net_no_prior, lineup_poss,
-    n_conference_members. ``adj_net_no_prior`` comes from the ratings shrunk toward zero."""
+    """team, conference, games, wins, losses, ncaa_bid, ncaa_games, ncaa_wins,
+    ncaa_units, sos, ortg, drtg, pace, adj_off, adj_def, adj_net, adj_net_no_prior,
+    lineup_poss, n_conference_members. ``adj_net_no_prior`` comes from the ratings
+    shrunk toward zero."""
     games: pl.DataFrame
     """contest_id, home, away, home_score, away_score, neutral, ncaa_tournament, possessions."""
     exponent: float
