@@ -56,13 +56,13 @@ Athletic impact            +4.6 /100   80%: +0.9 to +8.3            ▲ estimate
   offense / defense      +2.6 / +2.0
 Wins above replacement           0.6   80%: 0.2 to 1.2              ○ scenario
   replacement         bench median (-0.3/100); under nba convention 0.9 / pooled 0.6
-Program value                   $62k   80%: $13k to $160k           ○ scenario
+Program value                   $57k   80%: $12k to $142k           ○ scenario
   win revenue, this season          $31k   80%: $8k to $55k             ○ scenario
-  bid revenue, this season           $9k   80%: $1k to $29k             ○ scenario
-  tournament units              $23k   80%: $3k to $76k             ○ scenario
-  with next season              $83k   80%: $18k to $206k           ○ scenario
+  bid revenue, this season           $9k   80%: $1k to $30k             ○ scenario
+  tournament units              $17k   80%: $3k to $57k             ○ scenario
+  with next season              $74k   80%: $16k to $177k           ○ scenario
 Roster market value           $1.47M   80%: $485k to $2.54M         ○ scenario
-Surplus                      -$1.40M   80%: -$2.42M to -$468k       ○ scenario
+Surplus                      -$1.40M   80%: -$2.43M to -$470k       ○ scenario
 Among paid teammates  both above median   (relative to team medians)
 
 Drivers
@@ -74,7 +74,7 @@ Drivers
 + Example Conf roster budget tier: power (published average, collectives included); the House cap for direct revenue sharing across all sports is $20.50M
 
 Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
-As of 2026-09-17 · games through 2025-12-29 · model mbb-v0.4.0
+As of 2026-09-17 · games through 2025-12-29 · model mbb-v0.5.0
 No contract data is used. The market value spreads a published conference-tier budget across the roster by role and rating.
 ```
 
@@ -107,7 +107,7 @@ Seasons are keyed by ending year: 2026 is the 2025-26 season.
 | --- | --- | --- |
 | Athletic impact | Points per 100 possessions a player adds over an average D1 player | Possession-weighted ridge regression (RAPM) on every lineup, shrunk toward a box-score prior fitted on earlier seasons |
 | Wins above replacement | Wins the team gains versus a replacement-level player | Per-game win model over the team's actual schedule; three replacement definitions, one chosen |
-| Program value | Revenue this season that the fitted model associates with those wins | School fixed-effects model of EADA revenue, plus a tournament-bid model and conference units |
+| Program value | Revenue this season that the fitted model associates with those wins | School fixed-effects model of EADA revenue, plus a tournament-bid model reading record and schedule strength, and the discounted present value of conference units |
 | Roster market value | What a published tier budget would pay under a stated split | Allocation by role and rating (scenario). Disclosed pay would take precedence, but the packaged registry is empty, so that branch never fires |
 | Surplus | Program value minus price, annual on both sides | Difference of the two, on shared rating draws |
 
@@ -153,7 +153,7 @@ outcomes:
 | Correlation of summed player WAR with team wins | 0.79 | 0.80 | ≥ 0.70 |
 | Returning players: correlation gain from the prior | +0.122 | +0.124 | ≥ 0 |
 | Share of revenue bootstrap draws with a win effect ≤ 0 | 0.00 | 0.00 | ≤ 0.10 |
-| Largest gap between predicted and observed bid rate, by decile | 0.021 | 0.025 | ≤ 0.05 |
+| Largest gap between predicted and observed bid rate, by decile, season held out | 0.024 | 0.024 | ≤ 0.05 |
 
 Every number in these tables comes from `docs/_static/data/snapshot.json`, built by
 `scripts/build_snapshot.py`; a test fails if the README and the snapshot disagree.
@@ -237,10 +237,10 @@ full validation report, every assumption with its source, and the API reference.
 
 ## Roadmap
 
-- **0.5.0**: a bid model with strength of schedule, marginal tournament units and
-  discounting; allocation dispersion and per-school budgets; a finer status taxonomy.
+- **0.6.0**: allocation dispersion and per-school budgets; a finer status taxonomy;
+  a sport seam, so a second sport is a package rather than a fork.
 - **Later**: multi-season ratings with recency weights, in-season updates from
-  CollegeBasketballData, then football.
+  CollegeBasketballData, then women's basketball.
 
 ## Contributing
 
@@ -258,15 +258,18 @@ If you use athletevalue in a publication, cite the software:
   title   = {athletevalue: open models of college basketball player impact,
              program value and roster-market pay},
   year    = {2026},
-  version = {0.4.0},
-  doi     = {10.5281/zenodo.22818304},
+  version = {0.5.0},
+  doi     = {10.5281/zenodo.22818303},
   url     = {https://github.com/jman4162/athletevalue},
   note    = {Python package, MIT license; data files CC BY 4.0}
 }
 ```
 
-`10.5281/zenodo.22818304` is release 0.4.0. Cite `10.5281/zenodo.22818303` instead to point at
-whichever version is current.
+`10.5281/zenodo.22818303` resolves to whichever version is current. Each release also
+gets its own DOI, which Zenodo mints when the GitHub Release is published:
+`10.5281/zenodo.22818304` is 0.4.0. A release cannot name its own DOI, because the DOI
+does not exist until the release does, so cite the version-independent one above unless
+you need to pin an exact version.
 
 [CITATION.cff](https://github.com/jman4162/athletevalue/blob/main/CITATION.cff) carries
 the same metadata in a machine-readable form. Estimates are research outputs; read

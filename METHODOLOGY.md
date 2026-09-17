@@ -1,6 +1,6 @@
 # Methodology
 
-This document describes model `mbb-v0.4.0`. Every modelling constant named here is an
+This document describes model `mbb-v0.5.0`. Every modelling constant named here is an
 entry in the assumption registry (`athletevalue assumptions` lists them with their
 basis, citation or rationale); a governance test fails on bare numbers in modelling
 code. Figures quoted are from the 2025 and 2026 season fits on the upstream files
@@ -237,23 +237,57 @@ base: they still give the level the program books against the sport. So for the
 elasticity from revenue-tracking schools applied to an expense number.
 
 **Annual and two-season.** The headline program value is this season's effect
-($b_0$, $d_0$) plus the school's share of tournament units. The two-season figure adds
-next season's carry-over ($b_1$, $d_1$), which accrues whether or not the player is
-still on the roster. Only the annual figure is set against a season of pay.
+($b_0$, $d_0$) plus the present value of the school's share of tournament units. The
+two-season figure adds next season's carry-over ($b_1$, $d_1$) discounted one year,
+which accrues whether or not the player is still on the roster, and then removes the
+overlapping unit instalment described above. Only the annual figure is set against a
+season of pay.
 
 **Tournament bids.** A logistic model of bid on win percentage, power-conference
-membership and their interaction, fitted on 2011-2026 except 2020 and 2021. It is
-unregularized, has no strength-of-schedule term and includes the season being
-valued; a fitted power team goes from a 48% to a 95% bid probability between .600
-and .700, so the bid component is sensitive near the bubble.
+membership, their interaction, and strength of schedule, fitted on 2011-2026 except
+2020 and 2021. Strength of schedule is the mean over a team's games of the
+opponent's record with that game removed, so a team's own result stays out of its
+own schedule. It ranges from 0.290 to 0.685 in these data and its coefficient is
+12.8 per unit, which is what lets the model tell a .600 record in a one-bid league
+from a .600 record in a power league. Every coefficient but the intercept carries a
+ridge penalty of 0.01, present so that leaving a season out cannot run a
+near-separated fit off to large values rather than to shrink anything: the
+coefficients are on the natural win-percentage scale and are near 15, so a penalty
+of 1 would already distort the fitted probabilities.
+
+At the median power-conference schedule, a fitted power team goes from a 47% to a
+94% bid probability between .600 and .700, so the bid component is still sensitive
+near the bubble. Calibration is no longer scored on the rows the model was fitted
+on. `holdout_bid_predictions` refits the model once per season with that season
+left out and predicts it from the others, and the `bid_calibration_max_decile_gap`
+gate reads those predictions, so the reported gap is an out-of-sample figure.
 
 **Tournament units.** A conference earns one unit per game a member plays, except
-the championship game; the data give 1.94 units per bid, a field average that
-overstates what a marginal bubble bid earns (about one game). A unit is worth about
-\$2M paid over six years, undiscounted. The school's share defaults to an equal
-split among conference members, a user assumption. The bid-revenue term above is
-estimated from EADA revenue, which for revenue-tracking schools may already include
-distributed unit money, so the two components can double count.
+the championship game, which is excluded for the two teams that played it. Averaged
+over the whole field the data give 1.94 units per bid, but that is not what a bid in
+doubt earns. A player's wins reach program value only through the bid probability,
+and the derivative of that probability is proportional to $p(1-p)$, so the bids a win
+actually decides are the ones that term weights. Weighting each bid team's units by
+$p(1-p)$ gives 1.55 units, and that is the figure the model uses. It needs no seed
+and no bubble threshold, which matters because the schedule files carry no seed
+before 2022.
+
+A unit is worth about \$2M, paid in six annual instalments beginning the April after
+the tournament. The model discounts them at 5% a year, which brings the payout to
+0.846 of its face value, and discounts next season's revenue carry-over by one year
+on the same basis. The school's share defaults to an equal split among conference
+members, a user assumption.
+
+**Unit money and the bid effect.** The bid-revenue term is estimated from EADA
+revenue, which for revenue-tracking schools may already include distributed unit
+money. Because units earned in one tournament are not paid until the following
+April, they fall in the next fiscal year: the same-season bid effect $d_0$ cannot
+contain them, and the annual headline figure does not double count. Only $d_1$, next
+season's carry-over, can contain the first instalment. The registry entry
+`economics.unit_revenue_overlap` decides what to do about that, and by default
+subtracts exactly that instalment from the two-season figure. It can instead count
+both in full, or drop the unit component from both headline figures and report it
+alongside.
 
 ## 5. Roster market value
 

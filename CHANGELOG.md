@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.5.0 (2026-09-17)
+
+Program economics. Every dollar figure moves: the tournament-unit component falls by
+about a third, and with it program value and surplus.
+
+Tournament bids
+- The bid model reads strength of schedule, the mean over a team's games of the
+  opponent's record with that game removed. Without it a .600 record in a one-bid
+  league counted the same as a .600 record in a power league. The coefficient is 12.8
+  per unit of opponent record, on a range of 0.290 to 0.685.
+- Coefficients other than the intercept take a ridge penalty of 0.01. It is there so
+  that leaving a season out cannot run a near-separated fit off to large values, not
+  to shrink anything: the coefficients are near 15 on the natural scale, and a
+  penalty of 1 would already distort the fitted probabilities.
+- Calibration was scored on the rows the model was fitted on, which tests the shape
+  of the curve and nothing else. `holdout_bid_predictions` refits once per season
+  with that season held out, and the `bid_calibration_max_decile_gap` gate reads
+  those predictions. The gate is unchanged at 0.05 and now reports an out-of-sample
+  figure: 0.024 in both 2025 and 2026, against in-sample values of 0.021 and 0.025.
+- At the median power schedule a fitted power team still goes from 47% to 94%
+  between .600 and .700, so the bid component remains sensitive near the bubble.
+
+Tournament units
+- Units per bid was the field average, 1.94, which is what the whole bracket earns
+  rather than what a bid in doubt earns. A player's wins reach program value only
+  through the bid probability, whose derivative is proportional to p(1-p), so
+  `marginal_units_per_bid` weights each bid team's units by that quantity: 1.55.
+  No seed or bubble threshold is needed, which matters because the schedule files
+  carry no seed before 2022. The field average ships as `units_per_bid_field`.
+- The championship game, which earns no unit, is now excluded for the two teams that
+  played it rather than as a flat two team-games a season.
+- Unit money is discounted. The payout is six annual instalments beginning the April
+  after the tournament; at 5% a year that is 0.846 of face value. Next season's
+  revenue carry-over is discounted one year on the same basis.
+- METHODOLOGY admitted the bid effect and the unit component could count the same
+  money. Because units are not paid until the following April, the same-season bid
+  effect cannot contain them and the annual figure never overlapped; only the first
+  instalment can sit inside next season's reported revenue.
+  `economics.unit_revenue_overlap` subtracts exactly that instalment from the
+  two-season figure by default, and can instead count both in full or drop the unit
+  component from the headline figures and report it alongside.
+
+Releasing
+- A tag started the release and the live-data regression independently, so a release
+  could publish while the live gates were failing. The live suite now runs inside
+  `release.yml` and publishing needs it.
+- `tests/governance/test_versions.py` checks that `pyproject.toml`, `versions.py`,
+  `CITATION.cff`, `.zenodo.json`, `CHANGELOG.md` and the model version named in the
+  README and METHODOLOGY agree. The golden summary fixture had carried a
+  `mbb-v0.1.0` literal since 0.1.0.
+- `.zenodo.json` gains the description Zenodo otherwise takes from an empty release
+  body, the version, the concept DOI, and a note that the curated data files are
+  CC BY 4.0 rather than MIT. RELEASING.md records why a release's own DOI cannot
+  appear in that release.
+
+Wording
+- "Every number carries an interval and a stated basis" was not true of the driver
+  lines or the team medians; it now says every estimate. The roster-market row
+  described a disclosed-pay branch that cannot fire while the packaged registry is
+  empty.
+
+The revenue model is unchanged: one win, this and next season, is still 0.0065, and
+an NCAA bid 0.049.
+
 ## 0.4.0 (2026-09-17)
 
 Reproducibility

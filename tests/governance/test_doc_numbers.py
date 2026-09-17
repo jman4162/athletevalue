@@ -115,7 +115,10 @@ def methodology_expectations() -> list[str]:
         effect("win_effect_two_season", 4),
         effect("bid_effect_two_season", 3),
         f"The fit uses {economics['n_obs']:,} school-seasons from {economics['n_schools']} schools",
-        f"the data give {economics['units_per_bid']:.2f} units per bid",
+        f"the data give {economics['units_per_bid_field']:.2f} units per bid",
+        f"$p(1-p)$ gives {economics['units_per_bid']:.2f} units",
+        f"brings the payout to {economics['unit_pv_factor']:.3f} of its face value",
+        f"ridge penalty of {economics['bid_ridge_lambda']:g}",
         "| 2026 held-out error | "
         + " | ".join(
             f"{cv_at(2026, 'box_team_adjusted', lam):,.1f}"

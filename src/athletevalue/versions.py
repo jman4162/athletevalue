@@ -7,8 +7,8 @@ invalidates stale results instead of silently reusing them.
 
 from __future__ import annotations
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
-MODEL_VERSION = "mbb-v0.5.0.dev1"
+MODEL_VERSION = "mbb-v0.5.0"
 """Development builds use a .devN suffix; bump N whenever code that writes a derived
 file changes its output, since derived-file keys cannot see code changes."""

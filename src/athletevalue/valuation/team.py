@@ -83,6 +83,8 @@ def unit_terms(registry: AssumptionRegistry, units_per_bid: float) -> UnitTerms:
         first_year=int(registry.get("economics.unit_payout_first_year").scalar()),
         overlap=UnitOverlapPolicy(registry.get("economics.unit_revenue_overlap").text()),
     )
+
+
 ALLOCATION_ASSUMPTIONS = (
     "market.role_weight_rotation",
     "market.role_weight_bench",
