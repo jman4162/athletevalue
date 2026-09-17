@@ -92,8 +92,8 @@ def render_summary(v: PlayerValuation) -> str:
 
 
 DISCLAIMER = (
-    "Estimates, not reports of pay. An allocated market value spreads a published "
-    "conference-tier budget by role and rating; it says nothing about this player's contract."
+    "No contract data is used. The market value spreads a published conference-tier "
+    "budget across the roster by role and rating."
 )
 
 

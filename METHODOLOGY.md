@@ -219,7 +219,8 @@ D1 school-seasons). A bootstrap over schools gives 400 replicates.
 | One win, this and next season ($b_0 + b_1$) | 0.0065 | 0.0038 to 0.0090 |
 | NCAA bid, this and next season ($d_0 + d_1$) | 0.049 | 0.014 to 0.083 |
 
-**This is an association, not a causal estimate.** The identifying variation is a
+**The coefficient measures an association.** It does not estimate what one more win
+would cause. The identifying variation is a
 school winning more or less than its own norm. Schools that raise basketball
 spending win more and earn more in the same seasons: within the same sample, wins
 regressed on log expense with the same fixed effects give about 6 wins per log
@@ -280,8 +281,8 @@ still hold. The result is flat: a national player-of-the-year candidate gets abo
 fifth of a power-tier budget and every paid player is within a factor of about three
 of every other. Real rosters are more concentrated than that.
 
-The allocation does not see recruiting rank, draft stock, transfer leverage or
-social following, which drive real contracts.
+The allocation does not see recruiting rank, draft stock, offers from other schools
+through the transfer portal, or social following, which drive real contracts.
 
 ## 5b. Fitted market model (dormant)
 

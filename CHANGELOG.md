@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.4.0)
+## 0.4.0 (2026-09-17)
 
 Reproducibility
 - Upstream files behind the documented numbers are pinned by SHA-256 in
@@ -86,6 +86,11 @@ Fixes
   the published fits used.
 - Cross-validation subtracts the held-out Gram in place and reuses one factor buffer,
   cutting peak memory; results are bit-identical.
+
+Wording
+- The report footer, README and DISCLAIMER state plainly that no contract data is
+  used, replacing "estimates, not reports" phrasing; docs were checked with
+  slopscore-lint 0.14.1 (all pages score low).
 
 Publishing
 - Releases publish from GitHub Actions through PyPI Trusted Publishing. The package

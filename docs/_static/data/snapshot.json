@@ -35,8 +35,8 @@
       "median": 0.0064942
     }
   },
-  "model_version": "mbb-v0.4.0.dev2",
-  "package_version": "0.3.1",
+  "model_version": "mbb-v0.4.0",
+  "package_version": "0.4.0",
   "returning_players": {
     "corr_with_prior": 0.52389,
     "corr_without_prior": 0.39994,

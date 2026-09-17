@@ -15,4 +15,4 @@ Drivers
 
 Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
 As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.1.0
-Estimates, not reports of pay. An allocated market value spreads a published conference-tier budget by role and rating; it says nothing about this player's contract.
+No contract data is used. The market value spreads a published conference-tier budget across the roster by role and rating.

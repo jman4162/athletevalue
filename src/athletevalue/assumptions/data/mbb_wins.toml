@@ -91,8 +91,8 @@ description = "Probability mass of reported intervals."
 unit = "probability"
 basis = "modelling_choice"
 value = 0.8
-rationale = """An 80% interval is wide enough to be honest about college-sample noise and
-narrow enough to separate a starter from a bench player."""
+rationale = """An 80% interval still shows most of the noise in one college season, and
+stays narrow enough to separate a starter from a bench player."""
 
 ["mbb.wins.exponent_search_bounds"]
 description = "Interval searched when fitting the Pythagorean exponent."

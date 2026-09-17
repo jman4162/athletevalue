@@ -14,16 +14,16 @@ from every lineup they played, converts impact into wins and into the revenue sc
 attribute to basketball in federal filings, and sets that against an allocation of
 reported roster budgets. Every number carries an interval and a stated basis.
 
-**What the price side is and is not.** No public dataset records what individual
+**What the price side is.** No public dataset records what individual
 college basketball players are paid. The "roster market value" this package prints is
 an allocation: a published conference-tier average budget, spread across a roster by
 role and rating. It contains no information about any player's contract and is
 labelled a scenario for that reason. A model that learns pay from disclosed deals is
 included but ships dormant, because there are no public deals to train it on.
 
-**Estimates, not reports.** Outputs are research estimates about public game data
-and public filings. They are not reports of anyone's pay and should not be read or
-repeated as such. See [DISCLAIMER](https://github.com/jman4162/athletevalue/blob/main/DISCLAIMER.md)
+**No pay data.** Every output is a research estimate built from public game data and
+public filings. None of them states what a player is paid, and none should be quoted
+as a salary. See [DISCLAIMER](https://github.com/jman4162/athletevalue/blob/main/DISCLAIMER.md)
 and [PRIVACY](https://github.com/jman4162/athletevalue/blob/main/PRIVACY.md).
 
 ## Install
@@ -53,28 +53,28 @@ A. Guard · State U (Example Conf) · 2025-26 · starter
 
 Athletic impact            +4.6 /100   80%: +0.9 to +8.3            ▲ estimated
   offense / defense      +2.6 / +2.0
-Wins above replacement           0.6   80%: 0.2 to 1.1              ○ scenario
+Wins above replacement           0.6   80%: 0.2 to 1.2              ○ scenario
   replacement         bench median (-0.3/100); under nba convention 0.9 / pooled 0.6
-Program value                   $61k   80%: $12k to $158k           ○ scenario
+Program value                   $62k   80%: $13k to $160k           ○ scenario
   win revenue, this season          $31k   80%: $8k to $55k             ○ scenario
-  bid revenue, this season           $8k   80%: $1k to $28k             ○ scenario
-  tournament units              $22k   80%: $3k to $75k             ○ scenario
-  with next season              $82k   80%: $17k to $204k           ○ scenario
-Roster market value           $1.45M   80%: $476k to $2.55M         ○ scenario
-Surplus                      -$1.37M   80%: -$2.41M to -$458k       ○ scenario
+  bid revenue, this season           $9k   80%: $1k to $29k             ○ scenario
+  tournament units              $23k   80%: $3k to $76k             ○ scenario
+  with next season              $83k   80%: $18k to $206k           ○ scenario
+Roster market value           $1.47M   80%: $485k to $2.54M         ○ scenario
+Surplus                      -$1.40M   80%: -$2.42M to -$468k       ○ scenario
 Among paid teammates  both above median   (relative to team medians)
 
 Drivers
 + on-court impact ranks 1 of 72 rated players
-~ box-score prior +3.4 per 100; his possessions moved the rating +1.1
+~ box-score prior +3.4 per 100; own possessions moved the rating +1.1
 + on the floor for 58% of team possessions
 ~ team went 10-4, net rating +12.1
 + program reports $12.00M basketball revenue (D1 median $7.00M)
 + Example Conf roster budget tier: power (published average, collectives included); the House cap for direct revenue sharing across all sports is $20.50M
 
 Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
-As of 2026-09-17 · games through 2025-12-29 · model mbb-v0.3.1
-Estimates, not reports of pay. An allocated market value spreads a published conference-tier budget by role and rating; it says nothing about this player's contract.
+As of 2026-09-17 · games through 2025-12-29 · model mbb-v0.4.0
+No contract data is used. The market value spreads a published conference-tier budget across the roster by role and rating.
 ```
 
 ```python
@@ -194,7 +194,8 @@ import-linter contract that stops fitting code from importing it.
 
 ## Limitations
 
-- **Program value is an association, not a causal estimate.** The win coefficient is
+- **Program value measures an association.** It does not estimate what one more win
+  would cause. The win coefficient is
   identified from a school winning more or less than its own norm, and schools that
   spend more win more and earn more in the same years, so the coefficient can be
   biased upward. It counts only revenue schools attribute to men's basketball in EADA,
@@ -235,9 +236,8 @@ full validation report, every assumption with its source, and the API reference.
 
 ## Roadmap
 
-- **0.4.0**: pinned upstream hashes and version-keyed caches, cross-season identity in
-  the package, validation gates on every layer with a committed snapshot, a session
-  cache so one `value` call does not refit everything, CLI tests, a release workflow.
+- **0.5.0**: a bid model with strength of schedule, marginal tournament units and
+  discounting; allocation dispersion and per-school budgets; a finer status taxonomy.
 - **Later**: multi-season ratings with recency weights, in-season updates from
   CollegeBasketballData, then football.
 
@@ -257,7 +257,7 @@ If you use athletevalue in a publication, cite the software:
   title   = {athletevalue: open models of college basketball player impact,
              program value and roster-market pay},
   year    = {2026},
-  version = {0.3.1},
+  version = {0.4.0},
   url     = {https://github.com/jman4162/athletevalue},
   note    = {Python package, MIT license; data files CC BY 4.0}
 }

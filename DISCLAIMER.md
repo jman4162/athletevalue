@@ -2,7 +2,7 @@
 
 `athletevalue` produces statistical estimates for research and education.
 
-- Estimates are not reports of what any athlete is paid. The "roster market value"
+- No output states what any athlete is paid. The "roster market value"
   it prints is an allocation of a published conference-tier average budget by role
   and rating. It contains no information about any player's contract and is labelled
   a scenario. Treating it, or a surplus derived from it, as a statement about a named
