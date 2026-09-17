@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE", "LICENSE-DATA"]
-authors = [{ name = "John Hodge", email = "jhodge007@gmail.com" }]
+authors = [{ name = "John Hodge" }]
 keywords = [
     "college-basketball", "nil", "rapm", "plus-minus", "sports-economics",
     "wins-above-replacement", "revenue-sharing", "reproducible-research",

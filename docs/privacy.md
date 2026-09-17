@@ -43,8 +43,9 @@ When it opens, these rules apply:
 
 If you are an athlete, a school, an agent or a journalist and a row is wrong,
 disputed or something you want removed, open an issue at
-https://github.com/jman4162/athletevalue/issues or write to the maintainer at the
-address in `pyproject.toml`. The maintainer will:
+https://github.com/jman4162/athletevalue/issues. If the request should not be
+public, open an issue asking for a private contact and the maintainer will reply
+with one. The maintainer will:
 
 - acknowledge within 7 days;
 - mark the row `disputed` on receipt of any credible objection, which removes it from
