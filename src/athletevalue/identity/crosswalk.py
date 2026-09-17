@@ -11,7 +11,6 @@ _DATA_PACKAGE = "athletevalue.data.identity"
 
 
 @cache
-@cache
 def team_aliases() -> dict[str, tuple[str, ...]]:
     """Other names for each stats.ncaa.org team: its institution names in the crosswalk.
 

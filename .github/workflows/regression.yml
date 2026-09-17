@@ -1,12 +1,12 @@
 name: Live-data regression
 
 # Fits full seasons from the public sources and checks every validation gate.
-# Weekly, because upstream release assets can be re-cut without notice.
+# Weekly, because upstream release assets can be re-cut without notice. A tag runs
+# the same suite inside release.yml, where it gates publishing, so there is no tag
+# trigger here.
 on:
   schedule:
     - cron: "17 9 * * 1"
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 jobs:

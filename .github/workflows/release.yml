@@ -59,8 +59,37 @@ jobs:
           name: dist
           path: dist/
 
+  live-data:
+    # A release must not publish numbers the live sources no longer reproduce.
+    # regression.yml keeps the weekly cron; this is the same suite, gating the tag.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      ATHLETEVALUE_CACHE_DIR: ${{ github.workspace }}/.athletevalue-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Restore download cache
+        uses: actions/cache@v4
+        with:
+          path: .athletevalue-cache
+          key: athletevalue-data-${{ hashFiles('src/athletevalue/sources/**', 'src/athletevalue/data/pinned_artifacts.json') }}
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Full-season fits and cited pages
+        run: uv run pytest -m network -q
+
   publish:
-    needs: build
+    needs: [build, live-data]
     runs-on: ubuntu-latest
     environment:
       name: pypi

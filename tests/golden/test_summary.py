@@ -10,6 +10,10 @@ from athletevalue.schemas.identity import PlayerRef
 from athletevalue.valuation.report import money
 from athletevalue.valuation.result import Driver, PlayerValuation
 
+FIXTURE_MODEL_VERSION = "mbb-v0.0.0-fixture"
+"""Deliberately not a real release: this file pins how a summary renders, not which
+model produced it, and a real version here would go stale at every release."""
+
 GOLDEN = Path(__file__).with_name("summary.txt")
 
 
@@ -54,7 +58,7 @@ def _valuation() -> PlayerValuation:
         ),
         quadrant="both_above_median",
         drivers=[Driver(sign="+", text="on-court impact ranks 40 of 4000 rated players")],
-        model_version="mbb-v0.1.0",
+        model_version=FIXTURE_MODEL_VERSION,
         as_of=date(2026, 9, 16),
         data_through=date(2026, 4, 6),
         sources=[],

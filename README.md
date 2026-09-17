@@ -13,7 +13,7 @@ What an NCAA men's basketball player's wins are worth to his school, and what a
 published roster budget would pay him. A Python package and CLI that rates players
 from every lineup they played, converts impact into wins and into the revenue schools
 attribute to basketball in federal filings, and sets that against an allocation of
-reported roster budgets. Every number carries an interval and a stated basis.
+reported roster budgets. Every estimate carries an interval and a stated basis.
 
 **What the price side is.** No public dataset records what individual
 college basketball players are paid. The "roster market value" this package prints is
@@ -108,7 +108,7 @@ Seasons are keyed by ending year: 2026 is the 2025-26 season.
 | Athletic impact | Points per 100 possessions a player adds over an average D1 player | Possession-weighted ridge regression (RAPM) on every lineup, shrunk toward a box-score prior fitted on earlier seasons |
 | Wins above replacement | Wins the team gains versus a replacement-level player | Per-game win model over the team's actual schedule; three replacement definitions, one chosen |
 | Program value | Revenue this season that the fitted model associates with those wins | School fixed-effects model of EADA revenue, plus a tournament-bid model and conference units |
-| Roster market value | What a published tier budget would pay under a stated split | Allocation by role and rating (scenario); disclosed pay when the registry has it |
+| Roster market value | What a published tier budget would pay under a stated split | Allocation by role and rating (scenario). Disclosed pay would take precedence, but the packaged registry is empty, so that branch never fires |
 | Surplus | Program value minus price, annual on both sides | Difference of the two, on shared rating draws |
 
 Every estimate carries an 80% interval and a status:

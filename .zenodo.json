@@ -1,8 +1,15 @@
 {
   "title": "athletevalue: open models of college basketball player impact, program value and roster-market pay",
+  "description": "<p>A Python package and CLI that rates NCAA men's basketball players from every lineup they played, converts that impact into wins and into the revenue schools attribute to basketball in federal filings, and sets it against an allocation of reported roster budgets. Every estimate carries an interval and a stated basis. No contract data is used: the roster-market figure spreads a published conference-tier budget across a roster by role and rating, and is labelled a scenario.</p>",
   "upload_type": "software",
-  "creators": [{"name": "Hodge, John"}],
+  "creators": [
+    {
+      "name": "Hodge, John"
+    }
+  ],
+  "version": "0.4.0",
   "license": "MIT",
+  "notes": "Code is MIT. The curated data files in src/athletevalue/data (team crosswalk, deal registry) are CC BY 4.0; see LICENSE-DATA. Data downloaded at runtime stays under its own terms and is not redistributed.",
   "keywords": [
     "college basketball",
     "adjusted plus-minus",
@@ -11,6 +18,11 @@
     "revenue sharing"
   ],
   "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.22818303",
+      "relation": "isVersionOf",
+      "resource_type": "software"
+    },
     {
       "identifier": "https://jman4162.github.io/athletevalue/",
       "relation": "isDocumentedBy",

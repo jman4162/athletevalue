@@ -14,5 +14,5 @@ Drivers
 + on-court impact ranks 40 of 4000 rated players
 
 Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
-As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.1.0
+As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.0.0-fixture
 No contract data is used. The market value spreads a published conference-tier budget across the roster by role and rating.
