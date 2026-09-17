@@ -12,3 +12,5 @@
 - Season key is the ending year. Market budgets exist only for 2026.
 - Do not fit shipped values on KenPom, Knight-Newhouse or raw CollegeBasketballData; Torvik is validation only.
 - Private research notes live in `*.local.md` files, which git ignores.
+- Never name a real athlete in docs or examples; `scripts/readme_example.py` renders a synthetic one.
+- The deal registry is closed to contributions until PRIVACY.md's process is staffed.

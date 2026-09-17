@@ -21,7 +21,9 @@ def load_deal_registry(frame: pl.DataFrame | None = None) -> list[DealRecord]:
     records = []
     for row in frame.iter_rows(named=True):
         cleaned = {key: value for key, value in row.items() if value not in (None, "")}
-        records.append(DealRecord.model_validate(cleaned))
+        record = DealRecord.model_validate(cleaned)
+        if record.usable:
+            records.append(record)
     return records
 
 

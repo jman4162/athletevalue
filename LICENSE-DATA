@@ -1,27 +1,45 @@
 Data license
 ============
 
-The curated data files under src/athletevalue/data/ (the deal registry, team
-crosswalks and training-source manifests) are licensed under the Creative
-Commons Attribution 4.0 International License (CC BY 4.0):
-https://creativecommons.org/licenses/by/4.0/
+The curated data files under src/athletevalue/data/ (the deal registry, the team
+crosswalk and any manifests) are licensed under the Creative Commons Attribution
+4.0 International License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
 
 Attribute as: "athletevalue contributors, https://github.com/jman4162/athletevalue".
 
 What this license does not cover
 --------------------------------
 
-athletevalue downloads third-party data at runtime into a local cache. That
-data is not part of this repository and keeps its own terms:
+athletevalue downloads third-party data at runtime into a local cache. That data is
+not part of this repository, is never redistributed by this project, and keeps its
+own terms. The chain of title is described here as far as it is known.
 
-- SportsDataverse release assets (github.com/sportsdataverse/sportsdataverse-data):
-  published from an MIT-licensed repository.
-- EADA (ope.ed.gov/athletics): U.S. federal government work.
-- Bart Torvik team results (barttorvik.com): used only to validate outputs;
-  never bundled and never used to fit shipped coefficients.
+- SportsDataverse release assets (github.com/sportsdataverse/sportsdataverse-data).
+  The publishing repository is MIT-licensed. The MIT grant covers SportsDataverse's
+  own code and compilation work. The "ncaa_mbb_*" files are derived from
+  stats.ncaa.org play-by-play by the producer repository
+  sportsdataverse/ncaa-mbb-hoops-data, which carries no license file; stats.ncaa.org
+  refuses automated readers and the NCAA's terms of service prohibit scraping and
+  commercial exploitation of its content. The "espn_*" files are collected from
+  ESPN's public API, which likewise has granted nothing. Raw game facts are generally
+  not copyrightable in the United States, so the exposure is contractual rather than
+  copyright, but this project cannot settle that question for its users. A
+  commercial user should do their own diligence. The cache manifest tags these
+  files "ncaa_derived" and "espn_derived", not "mit".
+- EADA (ope.ed.gov/athletics): a U.S. federal government work, public domain.
+- Bart Torvik team results (barttorvik.com): fetched only to validate outputs. The
+  site's robots.txt permits the season CSV files and sets a ten-second crawl delay;
+  the package fetches one file per season. Never bundled and never used to fit a
+  shipped value.
+- Short factual quotations from press and methodology pages, each with a URL and
+  date, sit in the assumption registry as the basis for cited constants. They are
+  used for the facts they state, not for their expression.
 
 Optional adapters read files that a user supplies from their own authorized
-accounts (for example KenPom or the Knight-Newhouse College Athletics
-Database). Those files, and anything fitted from them, are not distributed by
-this project. A governance test fails the build if fitting code imports those
-adapters.
+accounts (for example KenPom or the Knight-Newhouse College Athletics Database).
+Those files, and anything fitted from them, are not distributed by this project. An
+import-linter contract fails the build if fitting code imports those adapters.
+
+Contributions to the deal registry are certified under the Developer Certificate of
+Origin (.github/DCO) plus the accuracy and consent terms in CONTRIBUTING.md and
+PRIVACY.md.

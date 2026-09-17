@@ -100,10 +100,11 @@ def make_raw_season(seed: int = 0, season: int = 2026) -> tuple[SeasonFrames, di
             }
         )
     box_rows = []
-    for (athlete, team), (poss, pts) in _box_counts(poss_rows).items():
+    for (athlete, team, contest), (poss, pts) in _box_counts(poss_rows).items():
         rating = off[athlete]
         box_rows.append(
             {
+                "contest_id": contest,
                 "player_id": athlete,
                 "team": team,
                 "o_poss": poss,
@@ -135,14 +136,16 @@ def make_raw_season(seed: int = 0, season: int = 2026) -> tuple[SeasonFrames, di
     return frames, net
 
 
-def _box_counts(poss_rows: list[dict[str, object]]) -> dict[tuple[str, str], tuple[float, float]]:
-    """Offensive possessions per player, with each possession's points split among the five."""
-    counts: dict[tuple[str, str], list[float]] = {}
+def _box_counts(
+    poss_rows: list[dict[str, object]],
+) -> dict[tuple[str, str, str], tuple[float, float]]:
+    """Offensive possessions per player and game, with points split among the five."""
+    counts: dict[tuple[str, str, str], list[float]] = {}
     for row in poss_rows:
         side = "home" if row["poss_team"] == row["home"] else "away"
         team = str(row[side])
         for slot in range(1, 6):
-            key = (str(row[f"{side}_{slot}_player_id"]), team)
+            key = (str(row[f"{side}_{slot}_player_id"]), team, str(row["contest_id"]))
             entry = counts.setdefault(key, [0.0, 0.0])
             entry[0] += 1
             entry[1] += float(row["pts"]) / 5  # type: ignore[arg-type]

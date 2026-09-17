@@ -32,7 +32,14 @@ class PlayerValuation(BaseModel):
     defense: Estimate
     war: Estimate
     war_linear: Estimate
+    replacement_definition: str
+    replacement_level: float
+    war_sensitivity: dict[str, float]
+    """Median WAR under each replacement definition, keyed by definition name."""
     program_value: Estimate | None
+    """Revenue this season from the player's wins and bid, under EADA accounting."""
+    program_value_two_season: Estimate | None = None
+    """The same plus next season's carry-over, which accrues whether or not he stays."""
     program_value_components: dict[str, Estimate]
     roster_market_value: Estimate | None
     allocated_market_value: Estimate | None = None

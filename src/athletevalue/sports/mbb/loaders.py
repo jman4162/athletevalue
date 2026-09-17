@@ -9,7 +9,7 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.frames.box import player_box_totals
-from athletevalue.impact.prior import BoxPriorModel, fit_box_prior
+from athletevalue.impact.prior import BoxPriorModel, PriorTrainingError, fit_box_prior
 from athletevalue.sources.cache import ArtifactCache
 from athletevalue.sources.sportsdataverse import (
     FIRST_POSSESSION_SEASON,
@@ -49,10 +49,14 @@ def load_season_frames(season: int, cache: ArtifactCache) -> SeasonFrames:
 
 
 def training_seasons(target: int, count: int, available: list[int]) -> list[int]:
-    """The *count* seasons nearest *target*, excluding it, earlier seasons first."""
-    others = [s for s in available if s != target]
-    ranked = sorted(others, key=lambda s: (abs(s - target), s > target))
-    return sorted(ranked[:count])
+    """The *count* most recent seasons before *target*.
+
+    Later seasons are never used: a prior fitted on them would carry information
+    from the future into a season's ratings, and any backtest built on those
+    ratings would overstate what could have been known at the time.
+    """
+    earlier = sorted(s for s in available if s < target)
+    return earlier[-count:] if count > 0 else []
 
 
 def cached_baseline(
@@ -76,9 +80,13 @@ def cached_baseline(
 def load_box_prior(
     target: int, cache: ArtifactCache, registry: AssumptionRegistry, *, last_season: int
 ) -> BoxPriorModel:
-    """Fit the box-score prior for *target* on other seasons' no-prior ratings."""
+    """Fit the box-score prior for *target* on earlier seasons' no-prior ratings.
+
+    *last_season* caps the seasons considered; seasons at or after *target* are
+    excluded regardless.
+    """
     client = SdvClient(cache)
-    available = list(range(FIRST_POSSESSION_SEASON, last_season + 1))
+    available = list(range(FIRST_POSSESSION_SEASON, min(last_season, target - 1) + 1))
     count = int(registry.get("mbb.prior.training_seasons").scalar())
     training = []
     for season in training_seasons(target, count, available):
@@ -87,6 +95,8 @@ def load_box_prior(
             training.append((season, cached_baseline(season, cache, registry), box))
         except SeasonUnavailableError:
             continue
+    if not training:
+        raise PriorTrainingError(f"no season before {target} has possession data")
     return fit_box_prior(
         training,
         pseudo_possessions=registry.get("mbb.prior.rate_pseudo_possessions").scalar(),

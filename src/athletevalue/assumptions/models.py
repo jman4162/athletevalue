@@ -26,7 +26,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from athletevalue.schemas.evidence import EvidenceStatus
 from athletevalue.schemas.source import SourceReference
 
-AssumptionValue = float | bool | tuple[float, ...] | tuple[str, ...]
+AssumptionValue = float | bool | str | tuple[float, ...] | tuple[str, ...]
 
 
 class AssumptionBasis(StrEnum):
@@ -118,6 +118,11 @@ class Assumption(BaseModel):
         if not isinstance(value, tuple) or not all(isinstance(v, int | float) for v in value):
             raise TypeError(f"{self.assumption_id} is not a numeric list: {value!r}")
         return tuple(float(v) for v in value)
+
+    def text(self) -> str:
+        if not isinstance(self.value, str):
+            raise TypeError(f"{self.assumption_id} is not a text choice: {self.value!r}")
+        return self.value
 
     def names(self) -> tuple[str, ...]:
         value = self.value

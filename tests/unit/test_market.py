@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 from athletevalue.market.allocation import AllocationRules, allocate, assign_roles
 from athletevalue.market.budget import BudgetTier, MarketUnavailableError, roster_budget
 from athletevalue.market.registry import load_deal_registry, observed_annual_pay
-from athletevalue.market.surplus import Quadrant, quadrant
+from athletevalue.market.surplus import Quadrant, assign_quadrants, quadrant
 from athletevalue.schemas.evidence import EvidenceStatus
 
 RULES = AllocationRules(
@@ -80,7 +80,8 @@ def test_budget_tiers_and_missing_season(registry):
     low, high = np.quantile(power.draws, [0.1, 0.9])
     assert low == pytest.approx(7e6, rel=0.03) and high == pytest.approx(10e6, rel=0.03)
     other = roster_budget("MEAC", 2026, registry, n_draws=10, rng=rng)
-    assert other.tier is BudgetTier.TIER_C and other.status is EvidenceStatus.SCENARIO
+    assert other.tier is BudgetTier.TIER_C and other.status is EvidenceStatus.ESTIMATED
+    assert roster_budget("Horizon", 2026, registry, n_draws=10, rng=rng).tier is BudgetTier.TIER_B
     with pytest.raises(MarketUnavailableError):
         roster_budget("SEC", 2025, registry, n_draws=10, rng=rng)
 
@@ -108,7 +109,14 @@ def test_packaged_registry_is_valid_and_lookup_works():
 
 
 def test_quadrants():
-    assert quadrant(10, 1, value_cut=5, price_cut=5) is Quadrant.UNDERVALUED
-    assert quadrant(10, 10, value_cut=5, price_cut=5) is Quadrant.STAR
-    assert quadrant(1, 10, value_cut=5, price_cut=5) is Quadrant.OVERVALUED
-    assert quadrant(1, 1, value_cut=5, price_cut=5) is Quadrant.LOW_PRIORITY
+    assert quadrant(10, 1, value_cut=5, price_cut=5) is Quadrant.VALUE_ABOVE_PRICE
+    assert quadrant(10, 10, value_cut=5, price_cut=5) is Quadrant.BOTH_ABOVE_MEDIAN
+    assert quadrant(1, 10, value_cut=5, price_cut=5) is Quadrant.VALUE_BELOW_PRICE
+    assert quadrant(1, 1, value_cut=5, price_cut=5) is Quadrant.BOTH_BELOW_MEDIAN
+
+
+def test_unpaid_players_get_no_quadrant():
+    table = pl.DataFrame({"program_value": [10.0, 1.0, 0.0], "price": [4.0, 6.0, 0.0]})
+    out = assign_quadrants(table)
+    assert out["quadrant"].to_list() == ["value_above_price", "value_below_price", None]
+    assert out["value_cut"][0] == 5.5 and out["price_cut"][0] == 5.0

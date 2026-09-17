@@ -50,10 +50,13 @@ def render_summary(v: PlayerValuation) -> str:
         _line("Athletic impact", v.athletic_impact, " /100"),
         f"{'  offense / defense':<{_LABEL_WIDTH}}{v.offense.value:>+7.1f} / {v.defense.value:+.1f}",
         _line("Wins above replacement", v.war),
+        _sensitivity_line(v),
         _line("Program value", v.program_value),
     ]
     for name, component in v.program_value_components.items():
-        lines.append(_line(f"  {name.replace('_', ' ')}", component))
+        lines.append(_line(f"  {name}", component))
+    if v.program_value_two_season is not None:
+        lines.append(_line("  with next season", v.program_value_two_season))
     lines.append(_line("Roster market value", v.roster_market_value))
     if v.allocated_market_value is not None:
         lines.append(_line("  allocation", v.allocated_market_value))
@@ -61,8 +64,10 @@ def render_summary(v: PlayerValuation) -> str:
         lines.append(_line("Disclosed pay", v.observed_price))
     lines.append(_line("Surplus", v.surplus))
     if v.quadrant:
+        label = v.quadrant.replace("_", " ")
         lines.append(
-            f"{'Value vs. price':<{_LABEL_WIDTH}}{v.quadrant.replace('_', ' '):>{_VALUE_WIDTH}}"
+            f"{'Among paid teammates':<{_LABEL_WIDTH}}{label:>{_VALUE_WIDTH}}"
+            "   (relative to team medians)"
         )
     lines += ["", "Drivers"]
     lines += [f"{d.sign} {d.text}" for d in v.drivers]
@@ -77,5 +82,24 @@ def render_summary(v: PlayerValuation) -> str:
         f"Price basis: {v.price_basis or 'none'}. Status: {legend}",
         f"As of {v.as_of.isoformat()} · games through {v.data_through.isoformat()} "
         f"· model {v.model_version}",
+        DISCLAIMER,
     ]
     return "\n".join(lines)
+
+
+DISCLAIMER = (
+    "Estimates, not reports of pay. An allocated market value spreads a published "
+    "conference-tier budget by role and rating; it says nothing about this player's contract."
+)
+
+
+def _sensitivity_line(v: PlayerValuation) -> str:
+    others = [
+        f"{name.replace('_', ' ')} {v.war_sensitivity[name]:.1f}"
+        for name in v.war_sensitivity
+        if name != v.replacement_definition
+    ]
+    return (
+        f"{'  replacement':<{_LABEL_WIDTH}}{v.replacement_definition.replace('_', ' ')} "
+        f"({v.replacement_level:+.1f}/100); under {' / '.join(others)}"
+    )

@@ -37,7 +37,7 @@ from athletevalue.valuation.team import (
     team_draws,
 )
 from athletevalue.versions import MODEL_VERSION
-from athletevalue.wins.war import war_analytic
+from athletevalue.wins.war import war_analytic, war_draws
 
 USD = "USD"
 RATING = "points per 100 possessions"
@@ -103,19 +103,43 @@ def value_player(
     war = summarize(
         draws.war[athlete], unit="wins", status=war_status, method="war_simulated", level=level
     )
+    impact_row = season.player_impact(athlete)
+    context = season.team_context(team_name)
+    games = season.schedule(
+        team_name, floor_non_d1=registry.get("mbb.wins.non_d1_opponent_floor").flag()
+    )
     war_linear = war_analytic(
-        season.player_impact(athlete),
-        season.team_context(team_name),
-        season.schedule(team_name),
-        replacement=registry.get("mbb.wins.replacement_level").scalar(),
+        impact_row,
+        context,
+        games,
+        replacement=season.replacement,
         home_court=season.rapm.home_court,
         margin_sd=season.margin_sd,
         level=level,
         status=war_status,
     )
+    war_sensitivity = {
+        name: float(
+            np.median(
+                war_draws(
+                    impact_row,
+                    context,
+                    games,
+                    replacement=level_value,
+                    home_court=season.rapm.home_court,
+                    margin_sd=season.margin_sd,
+                    rng=np.random.default_rng(seed),
+                    n_draws=len(draws.net_draws[athlete]),
+                    net_draws=draws.net_draws[athlete],
+                )
+            )
+        )
+        for name, level_value in season.replacement_levels.items()
+    }
 
     assumptions = [*impact_ids, *WAR_ASSUMPTIONS]
     program_value: Estimate | None = None
+    program_two_season: Estimate | None = None
     components: dict[str, Estimate] = {}
     program_draws = None
     if draws.program is not None:
@@ -127,13 +151,21 @@ def value_player(
             estimated, *(registry.get(i).status for i in UNIT_ASSUMPTIONS)
         )
         components = {
-            "win_revenue": summarize(
-                pv.win_revenue, unit=USD, status=estimated, method="win_revenue", level=level
+            "win revenue, this season": summarize(
+                pv.win_revenue_current,
+                unit=USD,
+                status=estimated,
+                method="win_revenue",
+                level=level,
             ),
-            "bid_revenue": summarize(
-                pv.bid_revenue, unit=USD, status=estimated, method="bid_revenue", level=level
+            "bid revenue, this season": summarize(
+                pv.bid_revenue_current,
+                unit=USD,
+                status=estimated,
+                method="bid_revenue",
+                level=level,
             ),
-            "tournament_units": summarize(
+            "tournament units": summarize(
                 pv.tournament_units,
                 unit=USD,
                 status=with_units,
@@ -141,9 +173,16 @@ def value_player(
                 level=level,
             ),
         }
-        program_draws = pv.total
+        program_draws = pv.annual
         program_value = summarize(
-            program_draws, unit=USD, status=with_units, method="program_value", level=level
+            program_draws, unit=USD, status=with_units, method="program_value_annual", level=level
+        )
+        program_two_season = summarize(
+            pv.two_season,
+            unit=USD,
+            status=with_units,
+            method="program_value_two_season",
+            level=level,
         )
         assumptions += [*PROGRAM_ASSUMPTIONS, *UNIT_ASSUMPTIONS]
 
@@ -180,10 +219,15 @@ def value_player(
                 registry,
                 teams=(team_name,),
             )
-            x = features.filter(pl.col("athlete_id") == athlete).select(FEATURES).to_numpy()[0]
+            feature_rows = features.filter(pl.col("athlete_id") == athlete)
+            if feature_rows.is_empty():
+                raise LookupError(
+                    f"{row['name']} has no market features: his team has no games with "
+                    "possession data"
+                )
+            x = feature_rows.select(FEATURES).to_numpy()[0]
             model = market_fit.model
-            lower, upper = model.interval_log(x[None, :], level)
-            median = float(np.clip(model.predict_log(x[None, :])[0], lower[0], upper[0]))
+            # Point, interval and the draws surplus uses all come from the same CV+ set.
             price_draws = np.exp(
                 model.draws_log(x, len(draws.war[athlete]), np.random.default_rng(seed + 1))
             )
@@ -193,14 +237,12 @@ def value_player(
                 war_status,
                 *(registry.get(i).status for i in model_ids),
             )
-            market = Estimate(
-                value=float(np.exp(median)),
-                lower=float(np.exp(lower[0])),
-                upper=float(np.exp(upper[0])),
-                level=level,
+            market = summarize(
+                price_draws,
                 unit=USD,
                 status=model_status,
                 method=f"fitted_market_model:{model.n_labels} labels",
+                level=level,
             )
             price_basis = "fitted_model"
             assumptions += list(model_ids)
@@ -251,7 +293,11 @@ def value_player(
         defense=defense,
         war=war,
         war_linear=war_linear,
+        replacement_definition=season.replacement_definition,
+        replacement_level=season.replacement,
+        war_sensitivity=war_sensitivity,
         program_value=program_value,
+        program_value_two_season=program_two_season,
         program_value_components=components,
         roster_market_value=market,
         allocated_market_value=allocated if market is not allocated else None,
@@ -259,7 +305,7 @@ def value_player(
         price_basis=price_basis,
         surplus=surplus,
         quadrant=quadrant,
-        drivers=_drivers(season, draws, athlete, row, economics),
+        drivers=_drivers(season, draws, athlete, row, economics, registry),
         model_version=MODEL_VERSION,
         as_of=as_of or date.today(),
         data_through=season.data_date,
@@ -274,7 +320,7 @@ def team_table(draws: TeamDraws) -> pl.DataFrame:
     rows = []
     for record in draws.roster.iter_rows(named=True):
         athlete = record["athlete_id"]
-        value = float(np.median(draws.program[athlete].total)) if draws.program else float("nan")
+        value = float(np.median(draws.program[athlete].annual)) if draws.program else float("nan")
         price = (
             float(np.median(draws.allocation.player(athlete))) if draws.allocation else float("nan")
         )
@@ -310,6 +356,7 @@ def _drivers(
     athlete: str,
     row: dict[str, object],
     economics: EconomicsModel | None,
+    registry: AssumptionRegistry,
 ) -> list[Driver]:
     drivers: list[Driver] = []
     table = season.rapm.table.filter(~pl.col("pooled"))
@@ -371,10 +418,18 @@ def _drivers(
                 )
             )
     if draws.budget is not None:
+        cap_id = f"economics.house_revenue_share_cap_{season.season}"
+        context = ""
+        if cap_id in registry:
+            cap = money(registry.get(cap_id).scalar())
+            context = f"; the House cap for direct revenue sharing across all sports is {cap}"
         drivers.append(
             Driver(
                 sign="+" if draws.budget.tier.value == "power" else "-",
-                text=f"{draws.conference} roster budget tier: {draws.budget.tier.value}",
+                text=(
+                    f"{draws.conference} roster budget tier: {draws.budget.tier.value}"
+                    f" (published average, collectives included){context}"
+                ),
             )
         )
     return drivers

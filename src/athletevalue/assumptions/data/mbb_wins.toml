@@ -1,13 +1,22 @@
 # Converting points per 100 possessions into wins.
 
-["mbb.wins.replacement_level"]
-description = """Net rating of a replacement player relative to an average player.
+["mbb.wins.replacement_definition"]
+description = """Which replacement level WAR and pay use: `nba_convention` (the Box Plus/Minus
+constant below), `pooled` (this season's fitted coefficient for players under the modelling
+threshold) or `bench_median` (the possession-weighted median rating of players ranked in the
+bench range by playing time on each team)."""
+unit = "choice"
+basis = "user_input"
+value = "bench_median"
 
-The convention comes from NBA Box Plus/Minus. College rosters are deeper and the
-pooled low-minute coefficient from the RAPM fit is reported next to it so a
-reader can see how far the convention is from this data."""
+["mbb.wins.replacement_level"]
+description = """Net rating of a replacement player under the NBA Box Plus/Minus convention.
+
+Kept as one of three definitions. It was borrowed from another league; in these data
+the pooled low-minute coefficient sits far below it (about -12 in 2026), and the choice
+roughly doubles every WAR and dollar figure, so it is a scenario input, not a fact."""
 unit = "points per 100 possessions"
-basis = "published_third_party"
+basis = "user_input"
 value = -2.0
 
 ["mbb.wins.replacement_level".citation]
@@ -16,6 +25,32 @@ title = "Basketball-Reference glossary: Value Over Replacement Player"
 url = "https://www.basketball-reference.com/about/glossary.html"
 quote = "the points per 100 TEAM possessions that a player contributed above a replacement-level (-2.0) player"
 license = "factual_citation"
+
+["mbb.wins.bench_rank_range"]
+description = "Playing-time ranks within a team that define the bench for `bench_median`."
+unit = "rank"
+basis = "modelling_choice"
+value = [9.0, 12.0]
+rationale = """Five starters and three rotation players are the paid core in the market
+allocation; the next four are who plays when one of them cannot. Ranks below 12 are
+walk-ons and injuries."""
+
+["mbb.wins.margin_sd_d1_only"]
+description = "Fit the game-margin spread on games between two D1 teams only."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """Non-D1 opponents share one coefficient, so their margins are not something the
+ratings can predict; including them raised the spread from 10.9 to 11.6 points in 2026."""
+
+["mbb.wins.non_d1_opponent_floor"]
+description = "Rate a non-D1 opponent no worse than the worst D1 team in the win model."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """The shared non-D1 coefficient (about -55 per 100 in 2026) is pulled down by the
+blowouts it absorbs; no D1 team rates below about -35. Either value makes those games
+near-certain wins, so the floor changes little and avoids an implausible number."""
 
 ["mbb.wins.pythag_exponent"]
 description = """Exponent in expected win% = ORtg^x / (ORtg^x + DRtg^x), fitted each season
@@ -31,9 +66,11 @@ value = [10.25, 11.5]
 
 ["mbb.wins.pythag_exponent_reference".citation]
 kind = "methodology"
-title = "Pomeroy College Basketball Ratings (Wikipedia summary of kenpom.com methodology)"
-url = "https://en.wikipedia.org/wiki/Pomeroy_College_Basketball_Ratings"
-section = "Pythagorean formula: 11.5 originally; 10.25 beginning with the 2012 season"
+title = "kenpom.com blog: Ratings Explanation"
+url = "https://kenpom.com/blog/ratings-explanation/"
+archived_url = "https://web.archive.org/web/20250206234805/https://kenpom.com/blog/ratings-explanation/"
+quote = "I am using 11.5 as the exponent."
+section = "Later update on the same page: \"Beginning with the 2012 season, I'm using 10.25 for the exponent.\""
 license = "factual_citation"
 
 ["mbb.wins.game_margin_sd"]

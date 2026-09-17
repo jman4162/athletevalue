@@ -1,7 +1,13 @@
 """Bart Torvik team results, used only to check this package's team ratings.
 
-The owner publishes season CSVs for bulk use and asks that pages not be scraped.
-Nothing from this source is bundled or used to fit a shipped value.
+Basis for the access pattern: https://barttorvik.com/robots.txt (read 2026-09-17)
+disallows the interactive pages (``/db.php``, ``/box.php``, ``/results.php``,
+``/playerstat.php``, ``/*.json`` and others) and sets ``Crawl-Delay: 10``; the
+per-season ``{season}_team_results.csv`` files are not disallowed. The package
+fetches one file per season and caches it, which stays within that delay. The
+site refuses requests from some cloud address ranges with HTTP 403, so callers
+treat this source as optional. Nothing from it is bundled or used to fit a
+shipped value.
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ class TorvikClient:
         self.cache = cache
 
     def team_results(self, season: int) -> pl.DataFrame:
+        """adjoe, adjde and their difference per team. Raises ``SourceUnavailableError`` on 403."""
         artifact = self.cache.fetch(
             TEAM_RESULTS_URL.format(season=season),
             relative_path=f"raw/torvik/{season}_team_results.csv",

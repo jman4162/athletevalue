@@ -51,7 +51,7 @@ def player_features(
     teams: tuple[str, ...] | None = None,
 ) -> pl.DataFrame:
     """One row per rated player: identifiers, tier code and every column in ``FEATURES``."""
-    replacement = registry.get("mbb.wins.replacement_level").scalar()
+    replacement = season.replacement
     level = registry.get("mbb.wins.interval_level").scalar()
     status = registry.get("mbb.impact.ridge_lambda").status
     rows = []

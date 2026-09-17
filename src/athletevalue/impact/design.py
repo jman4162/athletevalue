@@ -34,6 +34,8 @@ class Design:
     y: NDArray[np.float64]
     w: NDArray[np.float64]
     groups: NDArray[np.int64]
+    """Game index per row; ``contest_ids[groups[r]]`` is row r's contest id."""
+    contest_ids: tuple[str, ...]
     athlete_ids: tuple[str, ...]
     pooled_ids: frozenset[str]
     penalized: NDArray[np.bool_]
@@ -165,10 +167,8 @@ def build_design(lineups: LineupData, *, min_possessions: float) -> Design:
 
     poss = rows["poss"].cast(pl.Float64).to_numpy()
     y = PER_100 * rows["pts"].cast(pl.Float64).to_numpy() / poss
-    groups = (
-        rows.select(pl.col("contest_id").cast(pl.Categorical).to_physical())["contest_id"]
-        .to_numpy()
-        .astype(np.int64)
+    contest_ids, groups = np.unique(
+        rows["contest_id"].cast(pl.Utf8).to_numpy(), return_inverse=True
     )
     penalized = np.zeros(n_columns, dtype=bool)
     penalized[: 2 * n_players] = True
@@ -176,7 +176,8 @@ def build_design(lineups: LineupData, *, min_possessions: float) -> Design:
         X=X,
         y=y,
         w=poss,
-        groups=groups,
+        groups=groups.astype(np.int64),
+        contest_ids=tuple(str(c) for c in contest_ids),
         athlete_ids=athlete_ids,
         pooled_ids=pooled,
         penalized=penalized,

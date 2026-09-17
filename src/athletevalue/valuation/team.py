@@ -40,8 +40,12 @@ def impact_assumptions(season: SeasonModel) -> tuple[str, ...]:
 
 
 WAR_ASSUMPTIONS = (
+    "mbb.wins.replacement_definition",
     "mbb.wins.replacement_level",
+    "mbb.wins.bench_rank_range",
     "mbb.wins.game_margin_sd",
+    "mbb.wins.margin_sd_d1_only",
+    "mbb.wins.non_d1_opponent_floor",
     "mbb.wins.simulation_draws",
 )
 PROGRAM_ASSUMPTIONS = (
@@ -70,6 +74,8 @@ class TeamDraws:
     roster: pl.DataFrame
     """athlete_id, name, net, se_net, orapm, drapm, se_off, se_def, off_poss, def_poss,
     pooled, possession_share."""
+    net_draws: dict[str, FloatArray]
+    """Posterior draws of each player's net rating, shared by every layer below."""
     war: dict[str, FloatArray]
     program: dict[str, ProgramValueDraws] | None
     budget: RosterBudget | None
@@ -90,15 +96,26 @@ def team_draws(
 ) -> TeamDraws:
     rng = np.random.default_rng(seed)
     n_draws = int(registry.get("mbb.wins.simulation_draws").scalar())
-    replacement = registry.get("mbb.wins.replacement_level").scalar()
+    replacement = season.replacement
     context = season.team_context(team)
-    games = season.schedule(team)
+    games = season.schedule(
+        team, floor_non_d1=registry.get("mbb.wins.non_d1_opponent_floor").flag()
+    )
     team_row = season.teams.filter(pl.col("team") == team).row(0, named=True)
     conference = str(team_row["conference"])
 
     roster = season.roster(team).with_columns(
         ((pl.col("off_poss") + pl.col("def_poss")) / context.lineup_poss).alias("possession_share")
     )
+    # One posterior draw per player per index. WAR, program value and the allocation
+    # all read the same draw, so a player who is better than estimated in a draw is
+    # better in every layer of that draw.
+    net_matrix = rng.normal(
+        roster["net"].to_numpy()[None, :],
+        roster["se_net"].to_numpy()[None, :],
+        (n_draws, roster.height),
+    )
+    net_draws = {athlete: net_matrix[:, k] for k, athlete in enumerate(roster["athlete_id"])}
     war = {
         athlete: war_draws(
             season.player_impact(athlete),
@@ -109,6 +126,7 @@ def team_draws(
             margin_sd=season.margin_sd,
             rng=rng,
             n_draws=n_draws,
+            net_draws=net_draws[athlete],
         )
         for athlete in roster["athlete_id"]
     }
@@ -161,11 +179,12 @@ def team_draws(
             rotation_ratio=registry.get("market.role_weight_rotation").interval(),
             bench_ratio=registry.get("market.role_weight_bench").interval(),
         )
-        allocation = allocate(roster, budget.draws, rules, rng=rng)
+        allocation = allocate(roster, budget.draws, rules, rng=rng, net_draws=net_matrix)
     return TeamDraws(
         team=team,
         conference=conference,
         roster=roster,
+        net_draws=net_draws,
         war=war,
         program=program,
         budget=budget,

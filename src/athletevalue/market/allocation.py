@@ -73,21 +73,29 @@ def allocate(
     rules: AllocationRules,
     *,
     rng: np.random.Generator,
+    net_draws: FloatArray | None = None,
 ) -> Allocation:
     """Split each budget draw across *roster*.
 
     ``roster`` needs athlete_id, net, se_net and possession_share columns.
+    *net_draws* (shape n_draws by n_players, in roster order) lets the allocation use
+    the same rating draws as the wins model, so surplus does not sample one player's
+    rating twice.
     """
     ids = tuple(roster["athlete_id"].to_list())
     share = roster["possession_share"].cast(pl.Float64).to_numpy()
     roles = assign_roles(share, rules)
     n_draws, n_players = budget.size, len(ids)
 
-    net = rng.normal(
-        roster["net"].to_numpy()[None, :],
-        roster["se_net"].to_numpy()[None, :],
-        (n_draws, n_players),
-    )
+    if net_draws is None:
+        net_draws = rng.normal(
+            roster["net"].to_numpy()[None, :],
+            roster["se_net"].to_numpy()[None, :],
+            (n_draws, n_players),
+        )
+    if net_draws.shape != (n_draws, n_players):
+        raise ValueError(f"net_draws must have shape {(n_draws, n_players)}")
+    net = net_draws
     impact = (
         np.maximum(net - rules.replacement, rules.performance_floor) ** rules.performance_exponent
     )

@@ -9,7 +9,7 @@ value = 2000000.0
 
 ["economics.tournament_unit_value".citation]
 kind = "press"
-title = "Yahoo Sports: Here's how NCAA tournament schools make money in March Madness"
+title = "Deseret News, via Yahoo Sports: Here's how NCAA tournament schools make money in March Madness"
 url = "https://sports.yahoo.com/articles/ncaa-tournament-schools-money-march-172252800.html"
 quote = "Each of the now 135 units up for grabs in recent years have been worth about $2 million."
 published = "2026-03-17"
@@ -57,3 +57,19 @@ basis = "modelling_choice"
 value = [2020.0, 2021.0]
 rationale = """The 2020 NCAA tournament was cancelled, so no team has a bid that season.
 Attendance limits in 2020-21 cut ticket revenue for reasons unrelated to winning."""
+
+["economics.house_revenue_share_cap_2026"]
+description = """Per-school cap on direct revenue sharing with athletes across all sports under
+the House v. NCAA settlement, 2025-26. Context for roster budgets, which also include
+collective money; not used in any calculation."""
+unit = "USD"
+basis = "published_third_party"
+value = 20500000.0
+
+["economics.house_revenue_share_cap_2026".citation]
+kind = "press"
+title = "ESPN: Judge OK's $2.8B settlement, paving way for colleges to pay athletes"
+url = "https://www.espn.com/college-sports/story/_/id/45467505/judge-grants-final-approval-house-v-ncaa-settlement"
+quote = "The annual cap is expected to start at roughly $20.5 million per school in 2025-26 and increase every year during the decade-long deal."
+published = "2025-06-06"
+license = "factual_citation"

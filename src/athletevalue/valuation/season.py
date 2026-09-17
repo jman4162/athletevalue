@@ -16,7 +16,7 @@ from athletevalue.frames.box import player_box_totals
 from athletevalue.frames.games import SeasonGames, build_season_games, combined_game_map
 from athletevalue.frames.possessions import LineupData, build_lineup_data
 from athletevalue.frames.team_possessions import team_possession_totals
-from athletevalue.impact.cv import CvResult, cv_lambda
+from athletevalue.impact.cv import CvResult, PredictionsFor, cv_lambda, cv_with_prior, game_folds
 from athletevalue.impact.design import Design
 from athletevalue.impact.prior import BoxPriorModel, prior_offset, team_adjust
 from athletevalue.impact.rapm import RapmResult, fit_rapm
@@ -49,7 +49,9 @@ class SeasonModel:
     prior_offset: NDArray[np.float64] | None
     lineups: LineupData
     box_predictions: pl.DataFrame | None
-    """Unadjusted box-model predictions, kept so validation can refit the adjustment per fold."""
+    """Unadjusted box-model predictions from the full season's box scores."""
+    player_box: pl.DataFrame | None
+    """Per-game box scores, kept so validation can rebuild the prior from training games."""
     teams: pl.DataFrame
     """team, conference, games, wins, losses, ncaa_bid, ncaa_games, ncaa_wins, ortg,
     drtg, pace, adj_off, adj_def, adj_net, lineup_poss, n_conference_members."""
@@ -57,9 +59,31 @@ class SeasonModel:
     """contest_id, home, away, home_score, away_score, neutral, ncaa_tournament, possessions."""
     exponent: float
     margin_sd: float
+    replacement: float
+    """Net rating of a replacement player, under ``replacement_definition``."""
+    replacement_definition: str
+    replacement_levels: dict[str, float]
+    """Every replacement definition the registry knows, for sensitivity reporting."""
     lineup_counts: dict[str, int]
     data_date: date
     sources: tuple[SourceReference, ...]
+    notes: tuple[str, ...] = ()
+
+    @property
+    def worst_d1_net(self) -> float:
+        return float(self.teams["adj_net"].min())  # type: ignore[arg-type]
+
+    def non_d1_opponent_net(self, floor_at_worst_d1: bool) -> float:
+        """Rating used for a non-D1 opponent in the win model."""
+        if floor_at_worst_d1:
+            return max(self.rapm.non_d1_net, self.worst_d1_net)
+        return self.rapm.non_d1_net
+
+    def fold_predictions(self) -> PredictionsFor | None:
+        """Box predictions rebuilt from a subset of games, for leak-free cross-validation."""
+        if self.prior is None or self.player_box is None:
+            return None
+        return fold_predictions(self.prior, self.player_box, self.design)
 
     def team_context(self, team: str) -> TeamContext:
         row = self._team_row(team)
@@ -73,8 +97,9 @@ class SeasonModel:
             lineup_poss=float(row["lineup_poss"]),
         )
 
-    def schedule(self, team: str) -> list[GameContext]:
+    def schedule(self, team: str, *, floor_non_d1: bool = True) -> list[GameContext]:
         nets = dict(zip(self.teams["team"], self.teams["adj_net"], strict=True))
+        non_d1 = self.non_d1_opponent_net(floor_non_d1)
         out: list[GameContext] = []
         for game in self.games.filter(
             ((pl.col("home") == team) | (pl.col("away") == team))
@@ -85,7 +110,7 @@ class SeasonModel:
             venue = 0 if game["neutral"] else (1 if at_home else -1)
             out.append(
                 GameContext(
-                    opponent_net=float(nets.get(opponent, self.rapm.non_d1_net)),
+                    opponent_net=float(nets.get(opponent, non_d1)),
                     venue=venue,
                     possessions=float(game["possessions"]),
                 )
@@ -146,6 +171,22 @@ def baseline_rapm(frames: SeasonFrames, registry: AssumptionRegistry) -> RapmRes
     return result
 
 
+def fold_predictions(
+    prior: BoxPriorModel, player_box: pl.DataFrame, design: Design
+) -> PredictionsFor:
+    """A function from a training-row mask to box predictions built from those games only."""
+    contests = np.asarray(design.contest_ids)
+    box = player_box.with_columns(pl.col("contest_id").cast(pl.Utf8))
+
+    def predictions_for(train: NDArray[np.bool_]) -> pl.DataFrame:
+        games = pl.Series(sorted(set(contests[np.unique(design.groups[train])])), dtype=pl.Utf8)
+        return prior.predict(
+            player_box_totals(box.filter(pl.col("contest_id").is_in(games.implode())))
+        )
+
+    return predictions_for
+
+
 def assemble_season(
     frames: SeasonFrames,
     registry: AssumptionRegistry,
@@ -154,6 +195,7 @@ def assemble_season(
     choose_lambda_by_cv: bool = False,
     seed: int = 0,
     prior: BoxPriorModel | None = None,
+    notes: tuple[str, ...] = (),
 ) -> SeasonModel:
     """Fit one season. With *prior* and box scores in *frames*, ratings shrink toward it."""
     season = frames.season
@@ -181,13 +223,22 @@ def assemble_season(
 
     cv: CvResult | None = None
     if choose_lambda_by_cv:
-        cv = cv_lambda(
-            design,
-            registry.get("mbb.impact.lambda_grid").numbers(),
-            n_folds=int(registry.get("mbb.impact.cv_folds").scalar()),
-            rng=np.random.default_rng(seed),
-            offset=offset,
-        )
+        grid = registry.get("mbb.impact.lambda_grid").numbers()
+        n_folds = int(registry.get("mbb.impact.cv_folds").scalar())
+        if offset is None or prior is None or frames.player_box is None:
+            cv = cv_lambda(design, grid, n_folds=n_folds, rng=np.random.default_rng(seed))
+        else:
+            # The prior for each fold is rebuilt from that fold's training games; a
+            # full-season prior would let held-out outcomes into the shrinkage target.
+            _, cv = cv_with_prior(
+                design,
+                lineups,
+                game_folds(design.groups, n_folds, np.random.default_rng(seed)),
+                grid,
+                lam_baseline=baseline_lam,
+                adjust_to_team=registry.get("mbb.prior.team_adjustment").flag(),
+                predictions_for=fold_predictions(prior, frames.player_box, design),
+            )
         headline_lam = cv.best
     if offset is None and headline_lam == baseline_lam and cv is None:
         rapm, fit = baseline, baseline_fit
@@ -228,7 +279,15 @@ def assemble_season(
 
     game_poss = frames.possessions.group_by("contest_id").agg((pl.len() / 2).alias("possessions"))
     games = season_games.games.join(game_poss, on="contest_id", how="left")
-    margin_sd = _margin_sd(games, teams, rapm)
+    margin_sd = _margin_sd(
+        games, teams, rapm, d1_only=registry.get("mbb.wins.margin_sd_d1_only").flag()
+    )
+    levels = replacement_levels(rapm, registry)
+    definition = registry.get("mbb.wins.replacement_definition").text()
+    if definition not in levels:
+        raise ValueError(
+            f"unknown replacement definition {definition!r}; choose from {sorted(levels)}"
+        )
     return SeasonModel(
         season=season,
         rapm=rapm,
@@ -238,35 +297,78 @@ def assemble_season(
         prior_offset=offset,
         lineups=lineups,
         box_predictions=box_predictions,
+        player_box=frames.player_box,
         teams=teams,
         games=games,
         exponent=exponent,
         margin_sd=margin_sd,
+        replacement=levels[definition],
+        replacement_definition=definition,
+        replacement_levels=levels,
         lineup_counts=lineups.counts,
         data_date=_last_game_date(frames.schedule),
         sources=frames.sources,
+        notes=notes,
     )
 
 
-def _margin_sd(games: pl.DataFrame, teams: pl.DataFrame, rapm: RapmResult) -> float:
+def replacement_levels(rapm: RapmResult, registry: AssumptionRegistry) -> dict[str, float]:
+    """Net rating of a replacement player under each definition the registry offers.
+
+    ``nba_convention`` is the Box Plus/Minus constant. ``pooled`` is the fitted
+    coefficient of the players below the modelling threshold, the marginal D1 player
+    in these data. ``bench_median`` is the possession-weighted median rating of the
+    players ranked in the bench range by playing time on each team: the player a
+    coach actually turns to when a rotation player is unavailable.
+    """
+    low, high = registry.get("mbb.wins.bench_rank_range").interval()
+    table = rapm.table.with_columns((pl.col("off_poss") + pl.col("def_poss")).alias("_poss"))
+    ranked = table.with_columns(
+        pl.col("_poss").rank(method="ordinal", descending=True).over("team").alias("_rank")
+    ).filter((pl.col("_rank") >= low) & (pl.col("_rank") <= high) & (pl.col("_poss") > 0))
+    if ranked.is_empty():
+        bench = rapm.pool_net
+    else:
+        order = ranked.sort("net")
+        weights = order["_poss"].cast(pl.Float64).to_numpy()
+        cumulative = np.cumsum(weights) / weights.sum()
+        bench = float(order["net"].to_numpy()[int(np.searchsorted(cumulative, 0.5))])
+    return {
+        "nba_convention": registry.get("mbb.wins.replacement_level").scalar(),
+        "pooled": float(rapm.pool_net),
+        "bench_median": bench,
+    }
+
+
+def _margin_sd(
+    games: pl.DataFrame, teams: pl.DataFrame, rapm: RapmResult, *, d1_only: bool
+) -> float:
+    """Root-mean-square gap between actual and expected margins.
+
+    With *d1_only*, games against non-D1 opponents are left out: their opponent
+    rating is one shared coefficient, so their margins are not something the model
+    can be expected to predict, and they would inflate the spread used for every
+    close D1 game.
+    """
     nets = teams.select("team", "adj_net")
     frame = (
         games.filter(pl.col("possessions").is_not_null())
         .join(nets.rename({"team": "home", "adj_net": "home_net"}), on="home", how="left")
         .join(nets.rename({"team": "away", "adj_net": "away_net"}), on="away", how="left")
-        .with_columns(
-            pl.col("home_net").fill_null(rapm.non_d1_net),
-            pl.col("away_net").fill_null(rapm.non_d1_net),
-            pl.when(pl.col("neutral")).then(0.0).otherwise(1.0).alias("venue"),
-        )
-        .with_columns(
-            (
-                (pl.col("home_net") - pl.col("away_net") + 2 * rapm.home_court * pl.col("venue"))
-                * pl.col("possessions")
-                / PER_100
-            ).alias("expected"),
-            (pl.col("home_score") - pl.col("away_score")).cast(pl.Float64).alias("actual"),
-        )
+    )
+    if d1_only:
+        frame = frame.filter(pl.col("home_net").is_not_null() & pl.col("away_net").is_not_null())
+    frame = frame.with_columns(
+        pl.col("home_net").fill_null(rapm.non_d1_net),
+        pl.col("away_net").fill_null(rapm.non_d1_net),
+        pl.when(pl.col("neutral")).then(0.0).otherwise(1.0).alias("venue"),
+    ).with_columns(
+        (
+            (pl.col("home_net") - pl.col("away_net") + 2 * rapm.home_court * pl.col("venue"))
+            * pl.col("possessions")
+            / PER_100
+        ).alias("expected"),
+        (pl.col("home_score") - pl.col("away_score")).cast(pl.Float64).alias("actual"),
     )
     return fit_margin_sd(frame["actual"].to_numpy(), frame["expected"].to_numpy())
 

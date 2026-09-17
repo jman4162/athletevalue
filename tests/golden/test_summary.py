@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import date
 from pathlib import Path
 
@@ -32,6 +33,9 @@ def _valuation() -> PlayerValuation:
             value=3.2, lower=2.0, upper=4.5, unit="wins", status=est, method="war_simulated"
         ),
         war_linear=Estimate.normal(3.0, 0.8, unit="wins", status=est, method="war_analytic"),
+        replacement_definition="bench_median",
+        replacement_level=-6.5,
+        war_sensitivity={"nba_convention": 1.9, "pooled": 4.8, "bench_median": 3.2},
         program_value=Estimate(
             value=450_000, lower=200_000, upper=800_000, unit="USD", status=scen, method="pv"
         ),
@@ -48,7 +52,7 @@ def _valuation() -> PlayerValuation:
         surplus=Estimate(
             value=-450_000, lower=-900_000, upper=50_000, unit="USD", status=scen, method="s"
         ),
-        quadrant="fair_star",
+        quadrant="both_above_median",
         drivers=[Driver(sign="+", text="on-court impact ranks 40 of 4000 rated players")],
         model_version="mbb-v0.1.0",
         as_of=date(2026, 9, 16),
@@ -60,9 +64,11 @@ def _valuation() -> PlayerValuation:
 
 
 def test_summary_matches_golden_file():
+    """Set ATHLETEVALUE_UPDATE_GOLDEN=1 to rewrite the golden file after a deliberate change."""
     rendered = _valuation().summary()
-    if not GOLDEN.exists():
+    if os.environ.get("ATHLETEVALUE_UPDATE_GOLDEN"):
         GOLDEN.write_text(rendered + "\n", encoding="utf-8")
+    assert GOLDEN.exists(), "golden file missing; regenerate with ATHLETEVALUE_UPDATE_GOLDEN=1"
     assert rendered + "\n" == GOLDEN.read_text(encoding="utf-8")
 
 

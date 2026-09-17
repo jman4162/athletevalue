@@ -47,9 +47,21 @@ class RevenueModel:
         """Bootstrap draws of the log-revenue change per win, current plus next season."""
         return self._sum("wins", "wins_lag")
 
+    def win_effect_current(self) -> FloatArray:
+        return self._sum("wins")
+
+    def win_effect_next(self) -> FloatArray:
+        return self._sum("wins_lag")
+
     def bid_effect(self) -> FloatArray:
         """Bootstrap draws of the log-revenue change from a bid, current plus next season."""
         return self._sum("bid", "bid_lag")
+
+    def bid_effect_current(self) -> FloatArray:
+        return self._sum("bid")
+
+    def bid_effect_next(self) -> FloatArray:
+        return self._sum("bid_lag")
 
     def _sum(self, *terms: str) -> FloatArray:
         result: FloatArray = self.draws[:, [TERMS.index(t) for t in terms]].sum(axis=1)

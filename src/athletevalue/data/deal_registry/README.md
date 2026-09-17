@@ -1,8 +1,9 @@
 # Deal registry
 
 Publicly sourced compensation deals for college athletes, one row per deal. The
-file ships empty. Contributions are welcome under the rules below; the registry
-is licensed CC BY 4.0 (see LICENSE-DATA).
+file ships empty and **is not accepting contributions yet**: see `PRIVACY.md` for
+the correction and removal process that has to exist first, and for the rules that
+will apply when it opens. The registry is licensed CC BY 4.0 (see LICENSE-DATA).
 
 ## Columns
 
@@ -22,16 +23,22 @@ is licensed CC BY 4.0 (see LICENSE-DATA).
 | deal_type | yes | `revenue_share`, `collective`, `endorsement`, `appearance`, `other` |
 | deliverables | no | What the athlete provides |
 | source_url | yes | Public page stating the figure |
-| source_quality | yes | `contract_or_records_request`, `named_report`, `anonymous_report` |
+| source_quality | yes | `contract_or_records_request` or `named_report` |
+| status | yes | `active`, `disputed` or `withdrawn` |
+| status_note | no | Why a row is disputed or withdrawn |
 | notes | no | Anything a reader needs to interpret the row |
+
+Rows with status `disputed` or `withdrawn` are kept as tombstones and never used.
 
 ## Rules
 
-1. Every row needs a public `source_url` that states the dollar figure for this athlete.
+1. Every row needs a public `source_url` that states the dollar figure for this
+   athlete, from a named source. Unnamed-source figures are not accepted.
 2. Valuations are not deals. Do not add figures from On3 NIL Valuations, The NIL
    Standard, Opendorse Market Intel or similar rating products; they are model
    outputs.
 3. Do not add data from sources whose terms forbid redistribution, including
-   subscription databases.
-4. Sign off your commit (`git commit -s`) to certify you have the right to submit
-   the row under CC BY 4.0.
+   subscription databases, or records that appear to have been released in error.
+4. The athlete must be 18 or older at the deal date.
+5. Sign off your commit (`git commit -s`) and include the certifications in
+   `PRIVACY.md`.

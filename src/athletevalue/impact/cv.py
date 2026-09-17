@@ -8,6 +8,7 @@ product is computed once.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -52,6 +53,7 @@ def cv_lambda(
     rng: np.random.Generator,
     offset: NDArray[np.float64] | None = None,
 ) -> CvResult:
+    """Grouped CV. *offset* must not depend on this season's outcomes; see ``cv_with_prior``."""
     folds = game_folds(design.groups, n_folds, rng)
     return cv_with_folds(design, lambdas, folds, offset=offset)
 
@@ -94,26 +96,33 @@ def cv_with_folds(
     )
 
 
-def cv_prior_comparison(
+PredictionsFor = Callable[[NDArray[np.bool_]], pl.DataFrame]
+"""Given a mask of training rows, returns box predictions (athlete_id, prior_off, prior_def)
+computed from those rows' games only."""
+
+
+def cv_with_prior(
     design: Design,
     lineups: LineupData,
-    box_predictions: pl.DataFrame,
     folds: NDArray[np.int64],
+    lambdas: tuple[float, ...],
     *,
-    lam_without: float,
-    lam_with: float,
+    lam_baseline: float,
     adjust_to_team: bool,
-) -> tuple[float, float]:
-    """Held-out error without and with the box prior, with no information from held-out games.
+    predictions_for: PredictionsFor,
+) -> tuple[float, CvResult]:
+    """Held-out error without a prior (at *lam_baseline*) and with one at each of *lambdas*.
 
-    The team adjustment needs team ratings, and team ratings from the full season
-    would carry held-out games into the prior. Here each fold's adjustment uses a
-    no-prior fit on that fold's training rows only.
+    Nothing from a held-out game reaches the prior it is scored against: box
+    predictions come from *predictions_for* on the training rows, and the team
+    adjustment uses a no-prior fit on those rows. A prior built from the full season
+    would carry each held-out game's own outcome into its shrinkage target, which
+    makes held-out error fall without bound as the penalty grows.
     """
     n_folds = int(folds.max()) + 1
     full_gram = weighted_gram(design.X, design.w)
-    raw_offset = prior_offset(design, box_predictions)
-    without = with_prior = 0.0
+    without = 0.0
+    errors = np.zeros((n_folds, len(lambdas)))
     for fold in range(n_folds):
         held = folds == fold
         train = ~held
@@ -121,20 +130,63 @@ def cv_prior_comparison(
         gram = full_gram - weighted_gram(X_held, w_held)
         X_train, w_train = design.X[train], design.w[train]
         beta_none, _ = solve_penalized(
-            gram, weighted_moment(X_train, w_train, design.y[train]), lam_without, design.penalized
+            gram, weighted_moment(X_train, w_train, design.y[train]), lam_baseline, design.penalized
         )
         without += _held_error(X_held, w_held, design.y[held], beta_none) / n_folds
 
-        offset = raw_offset
+        predictions = predictions_for(train)
         if adjust_to_team:
-            adjusted = team_adjust(box_predictions, lineups, design, beta_none, rows=train)
-            offset = prior_offset(design, adjusted)
+            predictions = team_adjust(predictions, lineups, design, beta_none, rows=train)
+        offset = prior_offset(design, predictions)
         target = design.y - design.X @ offset
-        gamma, _ = solve_penalized(
-            gram, weighted_moment(X_train, w_train, target[train]), lam_with, design.penalized
-        )
-        with_prior += _held_error(X_held, w_held, target[held], gamma) / n_folds
-    return without, with_prior
+        moment = weighted_moment(X_train, w_train, target[train])
+        for k, lam in enumerate(lambdas):
+            gamma, _ = solve_penalized(gram, moment, lam, design.penalized)
+            errors[fold, k] = _held_error(X_held, w_held, target[held], gamma)
+    mean = errors.mean(axis=0)
+    se = errors.std(axis=0, ddof=1) / np.sqrt(n_folds) if n_folds > 1 else np.zeros_like(mean)
+    best_index = int(np.argmin(mean))
+    threshold = mean[best_index] + se[best_index]
+    one_se = max(lam for lam, err in zip(lambdas, mean, strict=True) if err <= threshold)
+    result = CvResult(
+        lambdas=lambdas,
+        mean_error=tuple(float(v) for v in mean),
+        se_error=tuple(float(v) for v in se),
+        best=lambdas[best_index],
+        one_se=one_se,
+    )
+    return without, result
+
+
+def cv_prior_comparison(
+    design: Design,
+    lineups: LineupData,
+    box_predictions: pl.DataFrame | PredictionsFor,
+    folds: NDArray[np.int64],
+    *,
+    lam_without: float,
+    lam_with: float,
+    adjust_to_team: bool,
+) -> tuple[float, float]:
+    """Held-out error without and with the box prior at one penalty each.
+
+    *box_predictions* is either a callable as in ``cv_with_prior`` or a fixed frame.
+    A fixed frame is only leak-free when it was not computed from this season's
+    games (for example true ratings in a synthetic test).
+    """
+    predictions_for: PredictionsFor = (
+        box_predictions if callable(box_predictions) else (lambda _train: box_predictions)
+    )
+    without, result = cv_with_prior(
+        design,
+        lineups,
+        folds,
+        (lam_with,),
+        lam_baseline=lam_without,
+        adjust_to_team=adjust_to_team,
+        predictions_for=predictions_for,
+    )
+    return without, result.mean_error[0]
 
 
 def _held_error(

@@ -124,16 +124,22 @@ def validate_season(
 
     ref_low, ref_high = registry.get("mbb.wins.pythag_exponent_reference").interval()
     notes.append(
-        f"Pythagorean exponent fitted on raw efficiencies: {model.exponent:.2f}. Published "
-        f"values for schedule-adjusted efficiencies are {ref_low:g}-{ref_high:g}; raw "
+        f"Pythagorean exponent fitted on raw efficiencies: {model.exponent:.2f}. Pomeroy's "
+        f"ratings page reports {ref_low:g}-{ref_high:g} for schedule-adjusted efficiencies; raw "
         "efficiencies give lower exponents because strong teams face strong schedules."
     )
-    replacement = registry.get("mbb.wins.replacement_level").scalar()
-    notes.append(
-        f"Pooled low-minute players rate {rapm.pool_net:+.1f} per 100 against the "
-        f"{replacement:+.1f} replacement convention."
+    levels = ", ".join(
+        f"{k.replace('_', ' ')} {v:+.1f}" for k, v in model.replacement_levels.items()
     )
-    notes.append(f"Game margin SD around fitted ratings: {model.margin_sd:.1f} points.")
+    notes.append(
+        f"Replacement level in use: {model.replacement_definition.replace('_', ' ')} "
+        f"({model.replacement:+.1f} per 100). Alternatives: {levels}. WAR and every dollar "
+        "figure scale with this choice."
+    )
+    scope = "D1 games only" if registry.get("mbb.wins.margin_sd_d1_only").flag() else "all games"
+    notes.append(f"Game margin SD around fitted ratings: {model.margin_sd:.1f} points ({scope}).")
+    for note in model.notes:
+        notes.append(note)
     return ValidationReport(season=model.season, gates=tuple(gates), notes=tuple(notes))
 
 
@@ -148,11 +154,14 @@ def _prior_checks(
         np.random.default_rng(seed),
     )
     lam_none = registry.get("mbb.impact.ridge_lambda").scalar()
-    assert model.box_predictions is not None
+    predictions_for = model.fold_predictions()
+    assert predictions_for is not None and model.box_predictions is not None
+    # Box totals and the team adjustment are both rebuilt from each fold's training
+    # games, so no held-out outcome reaches the prior it is scored against.
     without, with_prior = cv_prior_comparison(
         design,
         model.lineups,
-        model.box_predictions,
+        predictions_for,
         folds,
         lam_without=lam_none,
         lam_with=model.rapm.lam,
@@ -168,15 +177,10 @@ def _prior_checks(
     )
 
     threshold = registry.get("mbb.impact.reference_min_possessions").scalar()
-    p = design.n_players
-    prior = pl.DataFrame(
-        {
-            "athlete_id": list(design.athlete_ids),
-            "prior_off": model.prior_offset[:p],
-            "prior_def": model.prior_offset[p : 2 * p],
-        }
-    )
-    joined = model.baseline.table.join(prior, on="athlete_id").filter(
+    # The unadjusted predictions: what box scores alone, through a model fitted on
+    # other seasons, say about this season's no-prior ratings. The team-adjusted
+    # prior would score far higher because it is solved to match those ratings.
+    joined = model.baseline.table.join(model.box_predictions, on="athlete_id").filter(
         pl.col("off_poss") >= threshold
     )
     r2_off = weighted_r2(
@@ -191,8 +195,9 @@ def _prior_checks(
     )
     seasons = ", ".join(str(s) for s in model.prior.train_seasons)
     note = (
-        f"Box prior fitted on {seasons}, after the team adjustment from this season's games, "
-        f"explains {r2_off:.0%} of offensive and {r2_def:.0%} of defensive no-prior ratings "
-        f"({joined.height} players with >= {threshold:.0f} possessions; in-season, so optimistic)."
+        f"Box model fitted on {seasons} explains {r2_off:.0%} of offensive and {r2_def:.0%} of "
+        f"defensive no-prior ratings this season before the team adjustment "
+        f"({joined.height} players with >= {threshold:.0f} possessions). The adjustment is "
+        "solved to match team ratings, so it is not scored here."
     )
     return gate, note

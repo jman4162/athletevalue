@@ -26,23 +26,47 @@ class ProgramContext:
 
 @dataclass(frozen=True)
 class ProgramValueDraws:
-    win_revenue: FloatArray
-    """Revenue from the player's wins, this season and next, through the fitted effect."""
-    bid_revenue: FloatArray
-    """Revenue from the change in bid probability, through the fitted bid effect."""
+    """Revenue attributed to a player's wins, split by when it arrives.
+
+    ``annual`` is what the season itself brings: this season's win and bid effects
+    plus the school's share of the tournament units the bid earns. ``two_season``
+    adds next season's carry-over, which accrues whether or not the player is still
+    on the roster and so should not be set against one season of pay.
+    """
+
+    win_revenue_current: FloatArray
+    win_revenue_next: FloatArray
+    bid_revenue_current: FloatArray
+    bid_revenue_next: FloatArray
     tournament_units: FloatArray
     """The school's share of conference tournament-unit money from the bid change."""
     bid_probability_change: FloatArray
 
     @property
-    def total(self) -> FloatArray:
-        result: FloatArray = self.win_revenue + self.bid_revenue + self.tournament_units
+    def annual(self) -> FloatArray:
+        result: FloatArray = (
+            self.win_revenue_current + self.bid_revenue_current + self.tournament_units
+        )
         return result
 
     @property
-    def estimated_part(self) -> FloatArray:
-        """Everything except the tournament-unit share, which rests on a user assumption."""
-        result: FloatArray = self.win_revenue + self.bid_revenue
+    def two_season(self) -> FloatArray:
+        result: FloatArray = self.annual + self.win_revenue_next + self.bid_revenue_next
+        return result
+
+    @property
+    def total(self) -> FloatArray:
+        """Two-season total, kept for callers that predate the annual split."""
+        return self.two_season
+
+    @property
+    def win_revenue(self) -> FloatArray:
+        result: FloatArray = self.win_revenue_current + self.win_revenue_next
+        return result
+
+    @property
+    def bid_revenue(self) -> FloatArray:
+        result: FloatArray = self.bid_revenue_current + self.bid_revenue_next
         return result
 
 
@@ -60,20 +84,17 @@ def program_value_draws(
     """Pair each WAR draw with a bootstrap replicate of the revenue model."""
     n = war.size
     pick = rng.integers(0, revenue.draws.shape[0], n)
-    win_effect = revenue.win_effect()[pick]
-    bid_effect = revenue.bid_effect()[pick]
 
     win_pct = context.wins / context.games
     without = np.clip(win_pct - war / context.games, 0.0, 1.0)
     delta_p = bids.probability(win_pct, context.power) - bids.probability(without, context.power)
 
-    win_revenue = war * win_effect * context.revenue_base
-    bid_revenue = delta_p * bid_effect * context.revenue_base
     school_share = share_multiplier / context.conference_members
-    units = delta_p * units_per_bid * unit_value * school_share
     return ProgramValueDraws(
-        win_revenue=win_revenue,
-        bid_revenue=bid_revenue,
-        tournament_units=units,
+        win_revenue_current=war * revenue.win_effect_current()[pick] * context.revenue_base,
+        win_revenue_next=war * revenue.win_effect_next()[pick] * context.revenue_base,
+        bid_revenue_current=delta_p * revenue.bid_effect_current()[pick] * context.revenue_base,
+        bid_revenue_next=delta_p * revenue.bid_effect_next()[pick] * context.revenue_base,
+        tournament_units=delta_p * units_per_bid * unit_value * school_share,
         bid_probability_change=delta_p,
     )

@@ -9,11 +9,12 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry, default_registry
 from athletevalue.identity.resolve import resolve_team
+from athletevalue.impact.prior import PriorTrainingError
 from athletevalue.market.model import InsufficientLabelsError
 from athletevalue.market.registry import load_deal_registry
 from athletevalue.schemas.registry import DealRecord
-from athletevalue.sources.cache import ArtifactCache
-from athletevalue.sources.sportsdataverse import LATEST_SEASON, SdvClient, SdvDataset
+from athletevalue.sources.cache import ArtifactCache, SourceUnavailableError
+from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset
 from athletevalue.sources.torvik import TorvikClient
 from athletevalue.sports.mbb.economics_loaders import load_economics_frames
 from athletevalue.sports.mbb.loaders import load_box_prior, load_season_frames
@@ -41,25 +42,31 @@ def fit_season(
     """Download (or reuse) one season's inputs and fit ratings, team ratings and win models.
 
     *prior* defaults to the registry's ``mbb.prior.use_box_prior``. The prior is fit on
-    other seasons up to *last_available_season* (default: *season* or the latest season
-    with data, whichever is later).
+    seasons before *season* only; *last_available_season* can lower that cap further
+    (for example to reproduce what was knowable at an earlier date). The first season
+    with data has no earlier season and is fitted without a prior.
     """
     cache = cache or ArtifactCache.default()
     registry = registry or default_registry()
     frames = load_season_frames(season, cache)
     use_prior = registry.get("mbb.prior.use_box_prior").flag() if prior is None else prior
-    box_prior = (
-        load_box_prior(
-            season,
-            cache,
-            registry,
-            last_season=max(season, last_available_season or LATEST_SEASON),
-        )
-        if use_prior
-        else None
-    )
+    box_prior = None
+    notes: list[str] = []
+    if use_prior:
+        cap = season - 1
+        if last_available_season is not None:
+            cap = min(last_available_season, cap)
+        try:
+            box_prior = load_box_prior(season, cache, registry, last_season=cap)
+        except PriorTrainingError as error:
+            notes.append(f"no box-score prior: {error}")
     return assemble_season(
-        frames, registry, lam=lam, choose_lambda_by_cv=choose_lambda_by_cv, prior=box_prior
+        frames,
+        registry,
+        lam=lam,
+        choose_lambda_by_cv=choose_lambda_by_cv,
+        prior=box_prior,
+        notes=tuple(notes),
     )
 
 
@@ -74,8 +81,17 @@ def validate(
     cache = cache or ArtifactCache.default()
     registry = registry or default_registry()
     reference = SdvClient(cache).frame(SdvDataset.REFERENCE_RAPM, model.season)
-    torvik = TorvikClient(cache).team_results(model.season) if use_torvik else None
-    return validate_season(model, registry, reference_rapm=reference, torvik=torvik)
+    torvik = None
+    notes: tuple[str, ...] = ()
+    if use_torvik:
+        try:
+            torvik = TorvikClient(cache).team_results(model.season)
+        except SourceUnavailableError as error:
+            # barttorvik.com refuses some cloud address ranges; the comparison is
+            # optional and its absence is reported rather than hidden.
+            notes = (f"Torvik comparison skipped: {error}",)
+    report = validate_season(model, registry, reference_rapm=reference, torvik=torvik)
+    return ValidationReport(season=report.season, gates=report.gates, notes=(*report.notes, *notes))
 
 
 def fit_economics(
@@ -173,6 +189,7 @@ def value_player(
     registry: AssumptionRegistry | None = None,
     economics: bool = True,
     seed: int = 0,
+    last_available_season: int | None = None,
 ) -> PlayerValuation:
     """Value one player-season: impact, wins, program value, market price and surplus.
 
@@ -183,7 +200,9 @@ def value_player(
         raise ValueError(f"sport {sport!r} is not modelled yet; v0.3 covers men's basketball")
     cache = cache or ArtifactCache.default()
     registry = registry or default_registry()
-    model = fit_season(season, cache=cache, registry=registry)
+    model = fit_season(
+        season, cache=cache, registry=registry, last_available_season=last_available_season
+    )
     econ = fit_economics(season, cache=cache, registry=registry) if economics else None
     deals = load_deals(labels)
     market_fit: MarketFit | None = None

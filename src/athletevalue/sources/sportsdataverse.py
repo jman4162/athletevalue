@@ -1,8 +1,14 @@
 """SportsDataverse release assets for NCAA men's basketball.
 
-The assets are parquet files attached to GitHub releases of an MIT-licensed
-repository. No key or authentication is required. Season keys are the ending
-year: 2026 is the 2025-26 season.
+The assets are parquet files attached to GitHub releases of
+``sportsdataverse/sportsdataverse-data``, an MIT-licensed repository. That
+license covers SportsDataverse's own code and compilation work. The ``ncaa_mbb_*``
+files are derived from stats.ncaa.org play-by-play by a producer repository that
+carries no license file, and the ``espn_*`` files from ESPN's public API; neither
+origin has granted rights, and stats.ncaa.org's terms restrict automated access.
+This package fetches what SportsDataverse publishes, caches it locally, and
+redistributes none of it. No key or authentication is required. Season keys are
+the ending year: 2026 is the 2025-26 season.
 """
 
 from __future__ import annotations
@@ -44,6 +50,12 @@ class SdvDataset(StrEnum):
     def label(self) -> str:
         return f"SportsDataverse release {self.value}"
 
+    @property
+    def license_tag(self) -> LicenseTag:
+        if self.value.startswith("espn_"):
+            return LicenseTag.ESPN_DERIVED
+        return LicenseTag.NCAA_DERIVED
+
 
 class SdvClient:
     def __init__(self, cache: ArtifactCache) -> None:
@@ -62,7 +74,7 @@ class SdvClient:
             return self.cache.fetch(
                 self.url(dataset, season),
                 relative_path=relative,
-                license_tag=LicenseTag.MIT,
+                license_tag=dataset.license_tag,
                 refresh=refresh,
             )
         except ArtifactNotFoundError as error:

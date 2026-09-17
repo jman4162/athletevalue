@@ -18,12 +18,24 @@ class DealType(StrEnum):
 
 
 class SourceQuality(StrEnum):
-    """How directly the dollar figure was observed. Strongest first."""
+    """How directly the dollar figure was observed. Strongest first.
+
+    Figures attributed only to unnamed sources are not accepted: the registry names
+    real people, and a number nobody will put their name to is not evidence.
+    """
 
     CONTRACT_OR_RECORDS_REQUEST = "contract_or_records_request"
     NAMED_REPORT = "named_report"
     """A named journalist reporting a specific figure for a specific athlete."""
-    ANONYMOUS_REPORT = "anonymous_report"
+
+
+class RowStatus(StrEnum):
+    ACTIVE = "active"
+    DISPUTED = "disputed"
+    """The athlete, school or counterparty has contested the figure; kept but not used."""
+    WITHDRAWN = "withdrawn"
+    """Removed at the subject's request or after correction; kept as a tombstone because
+    CC BY 4.0 is irrevocable and forks would otherwise keep the old row."""
 
 
 class DealRecord(BaseModel):
@@ -51,7 +63,13 @@ class DealRecord(BaseModel):
     deliverables: str | None = None
     source_url: HttpUrl
     source_quality: SourceQuality
+    status: RowStatus = RowStatus.ACTIVE
+    status_note: str | None = None
     notes: str | None = None
+
+    @property
+    def usable(self) -> bool:
+        return self.status is RowStatus.ACTIVE
 
     @property
     def annualized_value(self) -> float:

@@ -12,18 +12,29 @@ value = ["ACC", "Big 12", "Big East", "Big Ten", "SEC"]
 
 ["market.power_conferences".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
-quote = "the power conferences – the Big Ten, Big 12, ACC, SEC and Big East – spend between $7 million and $10 million on a roster, on average"
+quote = "The power conferences – the Big Ten, Big 12, ACC, SEC and Big East – spend between $7 million and $10 million on a roster, on average, according to Opendorse."
 published = "2026-03-12"
 license = "factual_citation"
 
 ["market.tier_b_conferences"]
-description = """Conferences assigned to the middle spending tier. The study names the tier
-but not its members, so membership is a what-if."""
+description = """Conferences the cited study places in its middle spending tier, in this
+package's conference names. The article names the American, Atlantic 10, Mountain West,
+Pac-12 and Horizon League; the Pac-12 has no members in the 2025-26 data."""
 unit = "conference names"
-basis = "user_input"
-value = ["AAC", "Atlantic 10", "MWC", "WCC", "MVC"]
+basis = "published_third_party"
+value = ["AAC", "Atlantic 10", "MWC", "Horizon"]
+
+["market.tier_b_conferences".citation]
+kind = "press"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
+url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
+quote = "Conferences in that category include the American, Atlantic 10, Mountain West, Pac-12 and Horizon League."
+published = "2026-03-12"
+license = "factual_citation"
 
 ["market.roster_budget_power_2026"]
 description = "Average men's basketball roster budget, power tier, 2025-26 (low, high)."
@@ -33,7 +44,8 @@ value = [7000000.0, 10000000.0]
 
 ["market.roster_budget_power_2026".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
 quote = "spend between $7 million and $10 million on a roster, on average"
 published = "2026-03-12"
@@ -47,9 +59,10 @@ value = [2000000.0, 5000000.0]
 
 ["market.roster_budget_tier_b_2026".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
-section = "B Tier rosters in men's basketball range from $2 million and $5 million"
+quote = "From there, the \"B Tier\" rosters in men's basketball cost between $2 million and $5 million."
 published = "2026-03-12"
 license = "factual_citation"
 
@@ -61,9 +74,10 @@ value = [1000000.0, 2000000.0]
 
 ["market.roster_budget_tier_c_2026".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
-section = "lower-tier conferences fall into $1 million and $2 million for C Tier programs"
+quote = "Other low- and mid-major leagues have rosters between $1 million and $2 million in the \"C Tier.\""
 published = "2026-03-12"
 license = "factual_citation"
 
@@ -84,7 +98,8 @@ value = [0.75, 0.85]
 
 ["market.role_weight_rotation".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
 quote = "Rotational players also earn roughly 15-25% less than starters while bench players make 30-55% less"
 published = "2026-03-12"
@@ -98,7 +113,8 @@ value = [0.45, 0.70]
 
 ["market.role_weight_bench".citation]
 kind = "press"
-title = "Yahoo Sports (On3): Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+title = "On3, via Yahoo Sports: Study: College basketball NIL spending surges to $932.5 million for 2025-26 season"
+primary_source = "Opendorse study of 2025-26 college basketball NIL and revenue-share spending, as reported by On3"
 url = "https://sports.yahoo.com/articles/study-college-basketball-nil-spending-213429556.html"
 quote = "Rotational players also earn roughly 15-25% less than starters while bench players make 30-55% less"
 published = "2026-03-12"

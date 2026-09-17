@@ -36,10 +36,13 @@ def test_every_assumption_is_used_by_code():
     """A registry entry no code reads would mislead a reader about what drives results."""
     code = "\n".join(p.read_text(encoding="utf-8") for p in SRC.rglob("*.py"))
     registry = AssumptionRegistry.load()
-    budget_prefix = "market.roster_budget_"
+    # Season-keyed families are looked up as f"{prefix}{season}", so the prefix is what
+    # must appear in code.
+    season_keyed = ("market.roster_budget_", "economics.house_revenue_share_cap_")
     unused = [
         a.assumption_id
         for a in registry
-        if a.assumption_id not in code and not a.assumption_id.startswith(budget_prefix)
+        if a.assumption_id not in code
+        and not any(a.assumption_id.startswith(p) and p in code for p in season_keyed)
     ]
     assert not unused, unused

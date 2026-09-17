@@ -154,6 +154,8 @@ def test_program_value_scales_with_wins_and_revenue():
     assert np.all(zero.total == 0)
     two = program_value_draws(np.full(100, 2.0), context, revenue, bids, **kwargs)
     np.testing.assert_allclose(two.win_revenue, 2 * 0.01 * 10e6)
+    np.testing.assert_allclose(two.win_revenue_next, 0.0)
+    np.testing.assert_allclose(two.annual, two.two_season)  # no lagged effect in this model
     delta = bids.probability(20 / 30, False) - bids.probability(18 / 30, False)
     np.testing.assert_allclose(two.bid_revenue, delta * 0.05 * 10e6)
     np.testing.assert_allclose(two.tournament_units, delta * 2.0 * 2e6 / 10)

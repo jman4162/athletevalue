@@ -102,7 +102,23 @@ def test_team_draws_and_table(season, economics, registry):
     assert draws.budget is not None and draws.allocation is not None and draws.program is not None
     np.testing.assert_allclose(draws.allocation.pay.sum(axis=1), draws.budget.draws)
     table = team_table(draws)
-    assert set(table["quadrant"]) <= {"undervalued", "fair_star", "overvalued", "low_priority"}
+    assert set(table["quadrant"]) <= {
+        "value_above_price",
+        "both_above_median",
+        "value_below_price",
+        "both_below_median",
+        None,
+    }
+    unpaid = table.filter(pl.col("role") == "unpaid")
+    assert unpaid["quadrant"].null_count() == unpaid.height
+    assert set(model.replacement_levels) == {"nba_convention", "pooled", "bench_median"}
+    assert model.replacement == model.replacement_levels[model.replacement_definition]
+    # Every layer reads the same rating draw, so price and value move together.
+    athlete = table["athlete_id"][0]
+    price = draws.allocation.player(athlete)
+    value = draws.program[athlete].annual
+    assert np.corrcoef(draws.net_draws[athlete], price)[0, 1] > 0.5
+    assert np.corrcoef(draws.net_draws[athlete], value)[0, 1] > 0.5
     assert table["price"].sum() == pytest.approx(float(np.median(draws.budget.draws)), rel=0.25)
 
 

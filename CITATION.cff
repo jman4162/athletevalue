@@ -1,13 +1,13 @@
 cff-version: 1.2.0
 message: "If you use athletevalue, please cite it as below."
-title: "athletevalue: open models of college athlete impact, program value and market price"
+title: "athletevalue: open models of college basketball player impact, program value and roster-market pay"
 type: software
 authors:
   - family-names: Hodge
     given-names: John
 license: MIT
 repository-code: "https://github.com/jman4162/athletevalue"
-version: 0.3.0
+version: 0.3.1
 date-released: 2026-09-17
 keywords:
   - college basketball

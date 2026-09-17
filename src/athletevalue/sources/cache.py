@@ -33,6 +33,15 @@ class ArtifactNotFoundError(RuntimeError):
     """Raised when the upstream server reports that an artifact does not exist."""
 
 
+class SourceUnavailableError(RuntimeError):
+    """Raised when a source refuses or fails a download (for example a 403 to cloud runners)."""
+
+    def __init__(self, url: str, status: int) -> None:
+        super().__init__(f"{url} returned HTTP {status}")
+        self.url = url
+        self.status = status
+
+
 @dataclass(frozen=True)
 class RawArtifact:
     path: Path
@@ -110,7 +119,8 @@ class ArtifactCache:
             with client.stream("GET", url) as response:
                 if response.status_code == httpx.codes.NOT_FOUND:
                     raise ArtifactNotFoundError(f"{url} returned 404")
-                response.raise_for_status()
+                if response.is_error:
+                    raise SourceUnavailableError(url, response.status_code)
                 with partial.open("wb") as handle:
                     for chunk in response.iter_bytes(_CHUNK_BYTES):
                         handle.write(chunk)

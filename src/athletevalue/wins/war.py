@@ -117,15 +117,18 @@ def war_draws(
     margin_sd: float,
     rng: np.random.Generator,
     n_draws: int,
+    net_draws: FloatArray | None = None,
 ) -> FloatArray:
     """Expected-win difference over the team's actual schedule, one value per draw.
 
-    Each draw samples the player's net rating from its posterior, lowers the team's
+    Each draw samples the player's net rating from its posterior (or takes it from
+    *net_draws*, so other quantities can share the same draw), lowers the team's
     rating by the player's share of possessions times his margin over replacement,
     and sums the change in win probability across games.
     """
     with_player, poss = _game_margins(team, games, home_court)
-    net_draws = rng.normal(player.net, player.se_net, n_draws)
+    if net_draws is None:
+        net_draws = rng.normal(player.net, player.se_net, n_draws)
     delta = (net_draws - replacement) * player.on_share(team)
     without = with_player[None, :] - delta[:, None] * poss[None, :] / PER_100
     p_with = norm.cdf(with_player / margin_sd)

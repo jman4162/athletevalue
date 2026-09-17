@@ -145,11 +145,44 @@ def test_rapm_reports_prior_and_shrinks_toward_it():
     np.testing.assert_allclose(result.table["prior_net"].to_numpy(), 10.0)
 
 
-def test_training_seasons_prefer_nearest_then_earlier():
+def test_training_seasons_are_strictly_earlier():
     available = list(range(2011, 2027))
     assert training_seasons(2026, 4, available) == [2022, 2023, 2024, 2025]
-    assert training_seasons(2025, 4, available) == [2022, 2023, 2024, 2026]
-    assert training_seasons(2011, 2, available) == [2012, 2013]
+    assert training_seasons(2025, 4, available) == [2021, 2022, 2023, 2024]
+    assert training_seasons(2012, 4, available) == [2011]
+    assert training_seasons(2011, 2, available) == []
+    for target in available:
+        assert all(s < target for s in training_seasons(target, 4, available))
+
+
+def test_cv_with_prior_only_sees_training_rows():
+    from athletevalue.impact.cv import cv_with_prior
+
+    season = make_season(n_teams=6, games_per_pair=2, seed=8)
+    design = build_design(season.lineups, min_possessions=0)
+    folds = game_folds(design.groups, 3, np.random.default_rng(0))
+    seen: list[np.ndarray] = []
+
+    def predictions_for(train):
+        seen.append(train.copy())
+        return pl.DataFrame(
+            {"athlete_id": list(design.athlete_ids), "prior_off": 0.0, "prior_def": 0.0}
+        )
+
+    without, result = cv_with_prior(
+        design,
+        season.lineups,
+        folds,
+        (1000.0,),
+        lam_baseline=1000.0,
+        adjust_to_team=False,
+        predictions_for=predictions_for,
+    )
+    assert len(seen) == 3
+    for fold, mask in enumerate(seen):
+        assert not mask[folds == fold].any()  # held-out rows are never in the training mask
+        assert mask[folds != fold].all()
+    assert result.mean_error[0] == pytest.approx(without)  # a zero prior is no prior
 
 
 def test_player_box_totals_sum_games():

@@ -25,6 +25,13 @@ class LicenseTag(StrEnum):
 
     PUBLIC_DOMAIN = "public_domain"
     MIT = "mit"
+    NCAA_DERIVED = "ncaa_derived"
+    """Parsed from stats.ncaa.org play-by-play by SportsDataverse and published from an
+    MIT-licensed repository. The MIT grant covers that compilation, not rights the NCAA
+    may hold in the underlying data; the origin's terms restrict automated access."""
+    ESPN_DERIVED = "espn_derived"
+    """Collected from ESPN's public API by SportsDataverse and published from an
+    MIT-licensed repository, on the same footing as ``NCAA_DERIVED``."""
     CC_BY_4 = "cc_by_4"
     CC0 = "cc0"
     FACTUAL_CITATION = "factual_citation"
@@ -43,11 +50,16 @@ _TRAINABLE = frozenset(
     {
         LicenseTag.PUBLIC_DOMAIN,
         LicenseTag.MIT,
+        LicenseTag.NCAA_DERIVED,
+        LicenseTag.ESPN_DERIVED,
         LicenseTag.CC_BY_4,
         LicenseTag.CC0,
         LicenseTag.FACTUAL_CITATION,
     }
 )
+"""Sources this package fits on. The two derived tags are included on the strength of
+SportsDataverse's public release, not of any grant from the NCAA or ESPN; see
+LICENSE-DATA for what that does and does not settle."""
 
 
 class SourceReference(BaseModel):
@@ -62,6 +74,10 @@ class SourceReference(BaseModel):
     section: str | None = None
     quote: str | None = None
     published: str | None = None
+    archived_url: str | None = None
+    """A Wayback Machine snapshot, for pages that block automated readers or may move."""
+    primary_source: str | None = None
+    """The original study or document when the cited page is a report of it."""
     retrieved_at: datetime | None = None
     content_sha256: str | None = None
     license: LicenseTag

@@ -1,1 +1,1 @@
-deal_id,athlete_name,athlete_id,season,school,sport,deal_date,cash_value,in_kind_value,duration_months,counterparty,deal_type,deliverables,source_url,source_quality,notes
+deal_id,athlete_name,athlete_id,season,school,sport,deal_date,cash_value,in_kind_value,duration_months,counterparty,deal_type,deliverables,source_url,source_quality,status,status_note,notes

@@ -1,25 +1,50 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 (2026-09-17)
 
-Fixes from a code review of the market model:
+Fixes and corrections from an adversarial review. 0.2.0 and 0.3.0 are yanked on PyPI.
 
-- `athletevalue value --labels` now passes the labels file through; it was ignored.
-- CV+ intervals used half the miscoverage in each tail, so "80%" intervals covered about
-  90%. Each bound now uses the full `1 - level`; synthetic coverage is 0.79-0.83.
-  Monte Carlo draws sample the CV+ set itself instead of a narrower version of it.
-- The must-beat-the-allocation gate was skipped whenever any label lacked an allocated
-  price. The model and the allocation are now compared on the labels the allocation
-  prices, and the gate says when there is nothing to compare.
-- With `economics=False` the model was trained with revenue features but priced
-  players as if revenue were missing. Economics are now fitted for market features.
-- Deals are grouped by normalized name and school, so spelling variants of one
-  player-season become one label.
-- Deal CSVs with numeric ids load; ids are read as text.
-- A fitted price takes the status of its weakest input, including WAR and the tier
-  lists, so it now reports as a scenario. The allocation stays visible whenever it is
-  not the price.
-- The insufficient-labels message counts only men's basketball roster-pay deals.
+Model
+- The box-score prior trains only on seasons before the target season. Every season
+  but the latest previously shrank toward a prior that had seen later seasons.
+- `fit --cv` no longer leaks held-out games into the prior. The penalty is chosen with
+  the box totals and team adjustment rebuilt from each fold's training games; the
+  validation gate uses the same procedure, which the earlier gate did only for the
+  adjustment. The penalty stays at 3000.
+- WAR, program value and the allocated price read one shared draw of each player's
+  rating, so the surplus interval no longer samples the same rating twice.
+- Program value is annual: this season's win and bid effects plus tournament units.
+  The two-season figure with next season's carry-over is reported separately and is
+  not set against one season of pay.
+- The replacement level is a scenario input with three definitions (NBA convention,
+  pooled coefficient, bench median); the default is the bench median (about −1.2) and
+  every summary prints wins under all three.
+- The game-margin spread is fitted on D1-vs-D1 games; non-D1 opponents are rated no
+  worse than the worst D1 team.
+- Fitted-model price point, interval and surplus draws come from one CV+ set, with
+  ranks that guarantee the stated level.
+
+Claims and citations
+- The Pythagorean-exponent citation pointed at a page that did not contain the
+  figures; it now quotes Pomeroy's ratings page (archived copy linked).
+- Two paraphrased citations are verbatim quotes; market sources credit On3 and name
+  the Opendorse study; the units source credits Deseret News; the House cap is a
+  registry entry.
+- The box-prior evidence is restated against a zero-box control: most of the gain is
+  the team adjustment. The returning-player check ships as a script.
+- "Lower bound" language is replaced with the bias discussion; "cites every constant"
+  with "states the basis for every constant".
+
+Public posture
+- The README example is a synthetic player; real names appear only in tests.
+- The team table's labels are neutral positions against team medians, with the
+  medians printed, and unpaid players get none. Every summary ends with a disclaimer.
+- The deal registry is closed until the correction and removal process in the new
+  PRIVACY.md is staffed; the unnamed-source tier is gone; rows carry a status.
+- LICENSE-DATA and the README describe the real chain of title for SportsDataverse
+  data; ESPN-derived and NCAA-derived assets are tagged as such in the cache manifest.
+- DCO text vendored; `--last-season` on `fit`, `validate` and `value`; the citation
+  suite fetches every cited page in the network run.
 
 ## 0.3.0 (2026-09-17)
 

@@ -23,6 +23,13 @@ app = typer.Typer(
 SeasonOption = Annotated[
     int, typer.Option("--season", "-s", help="Ending year, e.g. 2026 for 2025-26.")
 ]
+LastSeasonOption = Annotated[
+    int | None,
+    typer.Option(
+        "--last-season",
+        help="Latest season the box-score prior may learn from (default: the season before).",
+    ),
+]
 AssumptionsOption = Annotated[
     list[Path] | None,
     typer.Option("--assumptions", "-a", help="TOML file overriding registry entries. Repeatable."),
@@ -75,12 +82,19 @@ def fit(
     output: Path | None = typer.Option(
         None, help="Write the full rating table to this parquet file."
     ),
+    last_season: LastSeasonOption = None,
     assumptions: AssumptionsOption = None,
 ) -> None:
     """Fit RAPM for a season and print the top players."""
     model = api.fit_season(
-        season, registry=_registry(assumptions), choose_lambda_by_cv=cv, prior=prior
+        season,
+        registry=_registry(assumptions),
+        choose_lambda_by_cv=cv,
+        prior=prior,
+        last_available_season=last_season,
     )
+    for note in model.notes:
+        typer.echo(f"note: {note}")
     rapm = model.rapm
     typer.echo(
         f"season {season}: {rapm.n_possessions:,} possessions, {rapm.n_rows:,} lineup rows, "
@@ -111,13 +125,13 @@ def validate(
     torvik: bool = typer.Option(
         True, help="Compare team ratings with Bart Torvik's published CSV."
     ),
+    last_season: LastSeasonOption = None,
     assumptions: AssumptionsOption = None,
 ) -> None:
     """Check a season fit against published references."""
     registry = _registry(assumptions)
-    report = api.validate(
-        api.fit_season(season, registry=registry), registry=registry, use_torvik=torvik
-    )
+    model = api.fit_season(season, registry=registry, last_available_season=last_season)
+    report = api.validate(model, registry=registry, use_torvik=torvik)
     for gate in report.gates:
         band = f"[{'' if gate.low is None else f'{gate.low:g}'}, {'' if gate.high is None else f'{gate.high:g}'}]"
         typer.echo(
@@ -140,11 +154,18 @@ def value(
         None, help="CSV of disclosed deals (deal-registry schema) to train the market model."
     ),
     seed: int = typer.Option(0, help="Random seed for the Monte Carlo draws."),
+    last_season: LastSeasonOption = None,
     assumptions: AssumptionsOption = None,
 ) -> None:
     """Value one player-season."""
     valuation = api.value_player(
-        name, season, team=team, labels=labels, registry=_registry(assumptions), seed=seed
+        name,
+        season,
+        team=team,
+        labels=labels,
+        registry=_registry(assumptions),
+        seed=seed,
+        last_available_season=last_season,
     )
     if as_json:
         typer.echo(json.dumps(valuation.model_dump(mode="json"), indent=2))
@@ -161,8 +182,16 @@ def team_command(
 ) -> None:
     """Value vs. price for every player on a team (medians)."""
     table = api.value_team(team, season, registry=_registry(assumptions), seed=seed)
+    cuts = table.filter(pl.col("value_cut").is_not_null()) if "value_cut" in table.columns else None
+    if cuts is not None and not cuts.is_empty():
+        typer.echo(
+            "Position among paid teammates uses this team's medians: "
+            f"value {money(float(cuts['value_cut'][0]))}, price {money(float(cuts['price_cut'][0]))}. "
+            "Value is annual program revenue under EADA accounting; price is an allocation "
+            "of a published conference-tier budget, not anyone's contract."
+        )
     typer.echo(
-        f"{'player':<24}{'role':<10}{'poss':>6}{'net':>7}{'WAR':>6}{'value':>10}{'price':>10}{'surplus':>10}  quadrant (relative to teammates)"
+        f"{'player':<24}{'role':<10}{'poss':>6}{'net':>7}{'WAR':>6}{'value':>10}{'price':>10}{'surplus':>10}  position"
     )
     for row in table.iter_rows(named=True):
         typer.echo(

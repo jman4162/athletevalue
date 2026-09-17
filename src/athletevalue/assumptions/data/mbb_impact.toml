@@ -61,7 +61,7 @@ value = [95.0, 112.0]
 kind = "methodology"
 title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
 url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
-section = "intercept era band (scale-bug catcher) | [95, 112]"
+quote = "intercept era band (scale-bug catcher) | [95, 112]"
 license = "factual_citation"
 
 ["mbb.impact.sigma2_band"]
@@ -74,7 +74,7 @@ value = [11000.0, 15000.0]
 kind = "methodology"
 title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
 url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
-section = "σ̂² era band (SE scale-bug catcher) | [11000, 15000]"
+quote = "σ̂² era band (SE scale-bug catcher) | [11000, 15000]"
 license = "factual_citation"
 
 ["mbb.impact.home_court_band"]
@@ -87,7 +87,7 @@ value = [1.0, 4.0]
 kind = "methodology"
 title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
 url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
-section = "home-court advantage band | [1.0, 4.0]"
+quote = "home-court advantage band | [1.0, 4.0]"
 license = "factual_citation"
 
 ["mbb.impact.reference_spearman_min"]
@@ -117,7 +117,7 @@ value = 0.93
 kind = "methodology"
 title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
 url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
-section = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
+quote = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
 license = "factual_citation"
 
 ["mbb.impact.torvik_min_teams"]
@@ -130,5 +130,5 @@ value = 250.0
 kind = "methodology"
 title = "SportsDataverse ncaa-mbb-hoops-data: RAPM model card, gate table"
 url = "https://github.com/sportsdataverse/ncaa-mbb-hoops-data/blob/main/docs/models/rapm.md"
-section = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
+quote = "Torvik external (league-wide only) | ≥ 250 joined teams AND Spearman(team_net, adjem) ≥ 0.93"
 license = "factual_citation"

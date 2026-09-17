@@ -63,12 +63,18 @@ class MarketModel:
     def interval_log(self, X: FloatArray, level: float) -> tuple[FloatArray, FloatArray]:
         """CV+ lower and upper bounds in log dollars, one pair per row of *X*.
 
-        The residuals are absolute, so each bound uses the full miscoverage ``1 - level``,
-        as in Barber et al. (2021), not half of it.
+        Each tail uses ``(1 - level) / 2``. Barber et al. (2021) prove the interval
+        formed with miscoverage ``a`` in each tail covers a new point with probability
+        at least ``1 - 2a`` under exchangeability, so this choice guarantees at least
+        *level*; the one-tail-each choice with ``a = 1 - level`` would guarantee only
+        ``2 * level - 1``. Under exchangeability the interval is conservative: on
+        synthetic data at level 0.8 it covers about 0.9. Labels are disclosed deals,
+        which are not exchangeable with undisclosed ones, so the guarantee applies to
+        players like those in the registry, not to every player priced.
         """
         matrix = self._matrix(X)
         loo = matrix @ self.fold_coef[self.fold_of_label].T  # rows: new points, cols: labels
-        alpha = 1 - level
+        alpha = (1 - level) / 2
         n = self.n_labels
         lower_rank = max(int(np.floor(alpha * (n + 1) + EPS)), 1)
         upper_rank = min(int(np.ceil((1 - alpha) * (n + 1) - EPS)), n)
