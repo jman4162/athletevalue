@@ -1,8 +1,19 @@
 # athletevalue
 
-Open models that estimate, separately, how much a college basketball player
-improves his team, what that improvement is worth to his program, and what the
-roster market would pay him.
+[![PyPI](https://img.shields.io/pypi/v/athletevalue.svg)](https://pypi.org/project/athletevalue/)
+[![Python](https://img.shields.io/pypi/pyversions/athletevalue.svg)](https://pypi.org/project/athletevalue/)
+[![CI](https://github.com/jman4162/athletevalue/actions/workflows/ci.yml/badge.svg)](https://github.com/jman4162/athletevalue/actions/workflows/ci.yml)
+[![Code license: MIT](https://img.shields.io/badge/code%20license-MIT-blue.svg)](https://github.com/jman4162/athletevalue/blob/main/LICENSE)
+[![Data license: CC BY 4.0](https://img.shields.io/badge/data%20license-CC%20BY%204.0-lightgrey.svg)](https://github.com/jman4162/athletevalue/blob/main/LICENSE-DATA)
+[![Typed](https://img.shields.io/badge/typing-mypy%20strict-informational.svg)](https://mypy-lang.org/)
+
+**Price ≠ value.** A Python package and CLI that rates NCAA men's basketball players
+from every lineup they played, converts their impact into wins and program revenue,
+and compares that value with what the roster market pays, with intervals and cited
+assumptions on every number.
+
+`#CollegeBasketball` `#MarchMadness` `#NIL` `#RevenueSharing` `#SportsAnalytics`
+`#SportsEconomics` `#RAPM` `#PlusMinus` `#Python` `#OpenSource` `#OpenData`
 
 Rating sites publish one "NIL value" per athlete from a model nobody outside can
 inspect. That single number mixes on-court impact, school revenue-sharing budgets,
@@ -55,8 +66,11 @@ Drivers
 + program reports $21.02M basketball revenue (D1 median $3.04M)
 + Big Ten roster budget tier: power
 
+Warnings
+! fitted market model not used: 0 disclosed deals available; at least 40 labeled player-seasons needed
+
 Price basis: allocation. Status: ● reported ◆ derived ▲ estimated ○ scenario
-As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.2.0
+As of 2026-09-16 · games through 2026-04-06 · model mbb-v0.3.0
 ```
 
 ```python
@@ -76,6 +90,7 @@ Other commands:
 | `athletevalue fit --season 2026 [--cv]` | Fit RAPM and print the top players |
 | `athletevalue validate --season 2026` | Check the fit against published references |
 | `athletevalue team "Duke" --season 2026` | Value vs. price for a roster |
+| `athletevalue market-fit [--labels deals.csv]` | Fit the market model on disclosed deals and report whether it beats the allocation |
 | `athletevalue assumptions` | List every model constant, its basis and status |
 | `athletevalue fetch --season 2026` | Download inputs without fitting |
 
@@ -88,7 +103,7 @@ Seasons are keyed by ending year: 2026 is the 2025-26 season.
 | Athletic impact | Points per 100 possessions a player adds over an average D1 player | Possession-weighted ridge regression (RAPM) on every lineup, shrunk toward a box-score prior |
 | Wins above replacement | Wins the team gains versus a replacement-level player | Per-game win model over the team's actual schedule |
 | Program value | Revenue those wins bring the school, this season and next | School fixed-effects model of EADA revenue, plus tournament bids |
-| Roster market value | What the 2025-26 market would plausibly pay | Reported roster budgets split by role and impact |
+| Roster market value | What the market would plausibly pay | Disclosed pay if the registry has it; else a model fitted on disclosed deals once it beats the allocation; else reported 2025-26 roster budgets split by role and impact |
 | Surplus | Program value minus price | Difference of the two simulations |
 
 Every estimate carries an 80% interval and a status:
@@ -99,8 +114,25 @@ Every estimate carries an 80% interval and a status:
 - ○ **scenario**: depends on an assumption a user should question, such as how a
   conference splits tournament money.
 
-A result takes the status of its weakest input. Market value is always a scenario
-in v0.1 because no public dataset records individual college basketball pay.
+A result takes the status of its weakest input. The allocated market value is a
+scenario because no public dataset records individual college basketball pay.
+
+## Market model
+
+Version 0.3 adds a model that learns roster pay from disclosed deals: ridge regression
+in log dollars on 14 player and program features, with the penalty chosen by
+leave-one-school-out cross-validation and CV+ prediction intervals. It sets the price
+only when it has at least 40 labeled player-seasons from 10 schools and its held-out
+error beats both a tier median and the allocation. The package ships no fitted model.
+The deal registry is empty, so today every valuation reports why the model was not
+used and keeps the allocation. To train on deals you are allowed to use:
+
+```bash
+athletevalue market-fit --labels my_deals.csv
+athletevalue value "Player Name" --season 2026 --labels my_deals.csv
+```
+
+The CSV uses the deal-registry columns. Fitted models stay on your machine.
 
 ## Validation
 
@@ -149,9 +181,10 @@ an import-linter contract that stops fitting code from importing it.
   media money, donations credited to the athletic department and brand effects are
   not in it, so program value is a lower bound on a player's value to the university.
   61% of D1 rows report revenue equal to expense and are excluded from the fit.
-- **Market value is an allocation, not a prediction.** It spreads reported average
-  roster budgets across a roster using reported pay ratios by role. It is only
-  available for 2025-26, the season those figures describe.
+- **Without labels, market value is an allocation, not a prediction.** It spreads
+  reported average roster budgets across a roster using reported pay ratios by role,
+  and is only available for 2025-26, the season those figures describe. The fitted
+  market model needs disclosed deals the public record does not yet contain.
 - **College ratings are noisy.** A starter's net rating has a posterior SD near 2.6
   points per 100 with the box-score prior and near 4 without it. The prior's own
   coefficient uncertainty is not propagated, so intervals are slightly too narrow.
@@ -163,11 +196,12 @@ an import-linter contract that stops fitting code from importing it.
 
 ## Roadmap
 
-- **v0.2 (this release)**: box-score prior for RAPM with a team adjustment.
-- **v0.3**: a fitted roster-market model that learns from disclosed deals and replaces
-  the allocation once enough labeled player-seasons exist.
-- **Later**: multi-season ratings with recency weights, CollegeBasketballData for
-  in-season updates, optional private KenPom calibration, then football.
+- **v0.2**: box-score prior for RAPM with a team adjustment.
+- **v0.3 (this release)**: fitted roster-market model with CV+ intervals, dormant until
+  enough disclosed deals exist.
+- **Next**: seed the deal registry from public records, multi-season ratings with
+  recency weights, CollegeBasketballData for in-season updates, optional private
+  KenPom calibration, then football.
 
 ## Contributing
 

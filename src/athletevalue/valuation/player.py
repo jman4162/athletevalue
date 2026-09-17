@@ -17,6 +17,12 @@ from athletevalue.schemas.identity import PlayerRef
 from athletevalue.schemas.registry import DealRecord
 from athletevalue.uncertainty.draws import summarize
 from athletevalue.valuation.economy import EconomicsModel
+from athletevalue.valuation.market_fit import (
+    FEATURES,
+    MODEL_ASSUMPTIONS,
+    MarketFit,
+    player_features,
+)
 from athletevalue.valuation.report import money
 from athletevalue.valuation.result import Driver, PlayerValuation
 from athletevalue.valuation.season import SeasonModel
@@ -44,6 +50,8 @@ def value_player(
     *,
     team: str | None = None,
     deals: list[DealRecord] | None = None,
+    market_fit: MarketFit | None = None,
+    market_note: str | None = None,
     seed: int = 0,
     as_of: date | None = None,
 ) -> PlayerValuation:
@@ -153,8 +161,39 @@ def value_player(
         )
         assumptions += [*draws.budget.assumption_ids, *ALLOCATION_ASSUMPTIONS]
 
-    observed: Estimate | None = None
+    allocated = market
     price_basis = "allocation" if market is not None else None
+    if market_note:
+        warnings.append(f"fitted market model not used: {market_note}")
+    if market_fit is not None:
+        usable, note = market_fit.usable(registry)
+        if not usable:
+            warnings.append(f"fitted market model not used: {note}")
+        else:
+            features = player_features(season, economics, registry, teams=(team_name,))
+            x = features.filter(pl.col("athlete_id") == athlete).select(FEATURES).to_numpy()[0]
+            model = market_fit.model
+            lower, upper = model.interval_log(x[None, :], level)
+            median = float(np.clip(model.predict_log(x[None, :])[0], lower[0], upper[0]))
+            price_draws = np.exp(
+                model.draws_log(x, len(draws.war[athlete]), np.random.default_rng(seed + 1))
+            )
+            model_status = EvidenceStatus.weakest(
+                EvidenceStatus.ESTIMATED, *(registry.get(i).status for i in MODEL_ASSUMPTIONS)
+            )
+            market = Estimate(
+                value=float(np.exp(median)),
+                lower=float(np.exp(lower[0])),
+                upper=float(np.exp(upper[0])),
+                level=level,
+                unit=USD,
+                status=model_status,
+                method=f"fitted_market_model:{model.n_labels} labels",
+            )
+            price_basis = "fitted_model"
+            assumptions += list(MODEL_ASSUMPTIONS)
+
+    observed: Estimate | None = None
     if deals:
         found = observed_annual_pay(
             deals, name=str(row["name"]), school=team_name, season=season.season
@@ -203,6 +242,7 @@ def value_player(
         program_value=program_value,
         program_value_components=components,
         roster_market_value=market,
+        allocated_market_value=allocated if price_basis == "fitted_model" else None,
         observed_price=observed,
         price_basis=price_basis,
         surplus=surplus,

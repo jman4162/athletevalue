@@ -1,6 +1,6 @@
 # Methodology
 
-This document describes model `mbb-v0.2.0`. Every constant named here is an entry
+This document describes model `mbb-v0.3.0`. Every constant named here is an entry
 in the assumption registry (`athletevalue assumptions` lists them with their basis,
 citation or rationale). Figures quoted are from the 2025 and 2026 season fits.
 
@@ -212,10 +212,39 @@ does not see recruiting rank, draft stock, transfer leverage or social following
 which the study and other research say drive real contracts. That is why it is
 labelled a scenario and why the deal registry exists.
 
+## 5b. Fitted market model
+
+**Labels.** Revenue-share and collective deals for a men's basketball player-season,
+annualized and summed, from the deal registry or a user CSV in its schema. Deals are
+matched to rated players by stats.ncaa.org id when given, otherwise by team and name.
+Unmatched deals are listed, not dropped silently.
+
+**Features.** Net, offensive and defensive rating; box-score prior; share of team
+possessions; starter flag; linear WAR; team net rating, win percentage and NCAA bid;
+power and B-tier flags; log program revenue with a missing flag.
+
+**Model.** Ridge regression of log pay on standardized features. The penalty is the
+grid value (0.1, 1, 10, 100) with the lowest leave-one-school-out mean absolute error
+in log dollars. Schools are the folds because pay is set school by school.
+
+**Intervals.** CV+ (Barber, Candès, Ramdas and Tibshirani, 2021) with schools as
+folds. For a new player each label *i* contributes the prediction of the model fitted
+without *i*'s school, plus and minus *i*'s held-out residual; the interval is the
+corresponding lower and upper quantiles. Monte Carlo draws for surplus sample that
+same set. On synthetic data with 240 labels, 80% intervals cover at least 75% of new
+points.
+
+**Use gate.** The fitted price replaces the allocation only when there are at least 40
+labeled player-seasons from 10 schools, and its held-out log error is below both a
+leave-one-school-out tier median and the allocation's error on the same players.
+Disclosed pay for the player-season itself still takes precedence. The registry is
+empty at release, so no valuation uses the model yet.
+
 ## 6. Surplus and quadrant
 
-Surplus is program value minus price, draw by draw. When the deal registry holds a
-disclosed figure for the player-season it replaces the allocation as the price.
+Surplus is program value minus price, draw by draw. The price is disclosed pay when the
+registry has it, then the fitted market model if it passes its gate, then the
+allocation.
 
 The value-vs-price quadrant compares a player's median program value and price with
 the medians of his paid teammates. It is a within-team comparison, not a league

@@ -136,6 +136,9 @@ def value(
         None, "--team", "-t", help="Disambiguate players with the same name."
     ),
     as_json: bool = typer.Option(False, "--json", help="Print the full valuation as JSON."),
+    labels: Path | None = typer.Option(
+        None, help="CSV of disclosed deals (deal-registry schema) to train the market model."
+    ),
     seed: int = typer.Option(0, help="Random seed for the Monte Carlo draws."),
     assumptions: AssumptionsOption = None,
 ) -> None:
@@ -166,6 +169,32 @@ def team_command(
             f"{row['name']:<24}{row['role'] or '':<10}{row['possession_share']:>6.0%}{row['net']:>+7.1f}{row['war']:>6.1f}"
             f"{money(row['program_value']):>10}{money(row['price']):>10}{money(row['surplus']):>10}  {row['quadrant'] or ''}"
         )
+
+
+@app.command("market-fit")
+def market_fit(
+    labels: Path | None = typer.Option(None, help="CSV of disclosed deals (deal-registry schema)."),
+    assumptions: AssumptionsOption = None,
+) -> None:
+    """Fit the roster-market model on disclosed deals and report whether it beats the allocation."""
+    registry = _registry(assumptions)
+    try:
+        fit = api.fit_market(labels=labels, registry=registry)
+    except api.InsufficientLabelsError as error:
+        typer.echo(f"not fitted: {error}")
+        raise typer.Exit(code=1) from error
+    model = fit.model
+    usable, note = fit.usable(registry)
+    typer.echo(
+        f"{model.n_labels} labeled player-seasons from {model.n_schools} schools; ridge penalty {model.lam:g}"
+    )
+    for lam, mae in model.cv_by_lambda:
+        typer.echo(f"  penalty {lam:>6g}  leave-one-school-out log MAE {mae:.3f}")
+    typer.echo(f"{'USABLE' if usable else 'NOT USED'}: {note}")
+    for feature, coef in zip(model.features, model.coef[1:], strict=True):
+        typer.echo(f"  {feature:<18} {coef:+.3f} log dollars per SD")
+    for line in fit.unmatched:
+        typer.echo(f"unmatched: {line}")
 
 
 @app.command("assumptions")

@@ -55,6 +55,8 @@ def render_summary(v: PlayerValuation) -> str:
     for name, component in v.program_value_components.items():
         lines.append(_line(f"  {name.replace('_', ' ')}", component))
     lines.append(_line("Roster market value", v.roster_market_value))
+    if v.allocated_market_value is not None:
+        lines.append(_line("  allocation", v.allocated_market_value))
     if v.observed_price is not None:
         lines.append(_line("Disclosed pay", v.observed_price))
     lines.append(_line("Surplus", v.surplus))

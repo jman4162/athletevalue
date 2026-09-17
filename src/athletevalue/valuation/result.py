@@ -35,6 +35,8 @@ class PlayerValuation(BaseModel):
     program_value: Estimate | None
     program_value_components: dict[str, Estimate]
     roster_market_value: Estimate | None
+    allocated_market_value: Estimate | None = None
+    """The role-and-impact allocation, kept when a fitted model sets the price."""
     observed_price: Estimate | None
     price_basis: str | None
     surplus: Estimate | None

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 (2026-09-17)
+
+- Fitted roster-market model: ridge regression of log annual pay on 14 player and
+  program features, penalty chosen by leave-one-school-out cross-validation, CV+
+  prediction intervals with schools as folds.
+- Use gate: at least 40 labeled player-seasons from 10 schools, and held-out error
+  below both a tier median and the allocation. Disclosed pay still outranks the model.
+- `athletevalue market-fit [--labels deals.csv]` and `value --labels`; valuations keep
+  the allocation as `allocated_market_value` when the model sets the price and warn
+  when the model is not used.
+- No fitted model ships: the deal registry is empty.
+- README badges, description and hashtags. Model version `mbb-v0.3.0`.
+
 ## 0.2.0 (2026-09-17)
 
 - Box-score prior for RAPM: a ridge model of per-100 box rates fitted on the four

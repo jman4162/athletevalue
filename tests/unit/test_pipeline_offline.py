@@ -129,3 +129,87 @@ def test_market_is_absent_before_revenue_sharing(registry):
     valuation = value_player(model, None, registry, name)
     assert valuation.roster_market_value is None and valuation.program_value is None
     assert any("roster-budget" in w for w in valuation.warnings)
+
+
+def _small_label_registry(tmp_path):
+    from athletevalue.assumptions.registry import AssumptionRegistry
+
+    override = tmp_path / "labels.toml"
+    override.write_text(
+        '["market.model.min_labels"]\ndescription = "test"\nunit = "count"\n'
+        'basis = "user_input"\nvalue = 20.0\n\n'
+        '["market.model.min_schools"]\ndescription = "test"\nunit = "count"\n'
+        'basis = "user_input"\nvalue = 4.0\n',
+        encoding="utf-8",
+    )
+    return AssumptionRegistry.load(extra_paths=(override,))
+
+
+def _deals(season_model, pay_from_net, seed=0):
+    from athletevalue.schemas.registry import DealRecord
+
+    rng = np.random.default_rng(seed)
+    table = season_model.rapm.table.filter(~pl.col("pooled"))
+    deals = []
+    for k, row in enumerate(table.iter_rows(named=True)):
+        pay = float(np.exp(pay_from_net(row["net"], rng)))
+        deals.append(
+            DealRecord(
+                deal_id=f"t{k}",
+                athlete_name=row["name"],
+                season=season_model.season,
+                school=row["team"],
+                sport="mbb",
+                cash_value=pay,
+                duration_months=12,
+                deal_type="revenue_share",
+                source_url="https://example.org/deal",
+                source_quality="named_report",
+            )
+        )
+    return deals
+
+
+def test_fitted_market_model_sets_the_price_when_it_beats_baselines(season, economics, tmp_path):
+    from athletevalue.valuation.market_fit import fit_market, match_labels, player_features
+
+    model, _ = season
+    registry = _small_label_registry(tmp_path)
+    deals = _deals(model, lambda net, rng: 12.5 + 0.25 * net + rng.normal(0, 0.05))
+    deals.append(deals[0].model_copy(update={"deal_id": "ghost", "athlete_name": "Nobody Here"}))
+    features = player_features(model, economics, registry)
+    matched = match_labels(deals, features, registry)
+    assert any("Nobody Here" in line for line in matched.unmatched)
+
+    fit = fit_market(features, deals, registry)
+    usable, note = fit.usable(registry)
+    assert usable, note
+    name = model.rapm.table.filter(~pl.col("pooled"))["name"][0]
+    valuation = value_player(model, economics, registry, name, deals=deals, market_fit=fit, seed=3)
+    assert valuation.price_basis == "registry"  # the player's own deal outranks the model
+
+    other = [d for d in deals if d.athlete_name != name]
+    fit_without = fit_market(features, other, registry)
+    valuation = value_player(model, economics, registry, name, market_fit=fit_without, seed=3)
+    assert valuation.price_basis == "fitted_model"
+    assert valuation.allocated_market_value is not None
+    assert valuation.roster_market_value.method.startswith("fitted_market_model")
+    assert "  allocation" in valuation.summary()
+    assert "market.model.min_labels" in valuation.assumptions_used
+
+
+def test_noise_labels_do_not_replace_the_allocation(season, economics, tmp_path):
+    from athletevalue.valuation.market_fit import fit_market, player_features
+
+    model, _ = season
+    registry = _small_label_registry(tmp_path)
+    deals = _deals(model, lambda net, rng: 12.5 + rng.normal(0, 1.0), seed=4)
+    fit = fit_market(player_features(model, economics, registry), deals, registry)
+    usable, _ = fit.usable(registry)
+    name = model.rapm.table.filter(~pl.col("pooled"))["name"][1]
+    if not usable:
+        valuation = value_player(model, economics, registry, name, market_fit=fit, seed=3)
+        assert valuation.price_basis in {"allocation", "registry"}
+        assert any("fitted market model not used" in w for w in valuation.warnings)
+    else:
+        assert fit.model.cv_log_mae < fit.model.baseline_log_mae

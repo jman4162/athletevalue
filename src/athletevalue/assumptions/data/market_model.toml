@@ -1,0 +1,42 @@
+# Fitted roster-market model (v0.3). Dormant until disclosed deals meet the gates below.
+
+["market.model.label_deal_types"]
+description = "Deal types counted as roster pay when building training labels."
+unit = "deal types"
+basis = "modelling_choice"
+value = ["revenue_share", "collective"]
+rationale = """Revenue-share and collective payments are what a roster budget buys.
+Endorsements and appearances are commercial NIL, a different quantity this model
+does not price."""
+
+["market.model.min_labels"]
+description = "Labeled player-seasons needed before the fitted model can be used."
+unit = "count"
+basis = "modelling_choice"
+value = 40.0
+rationale = """About three observations per feature. Below this, leave-one-school-out
+intervals are too coarse to beat the allocation in any meaningful way."""
+
+["market.model.min_schools"]
+description = "Distinct schools needed among labels; cross-validation holds out one school at a time."
+unit = "count"
+basis = "modelling_choice"
+value = 10.0
+rationale = """Pay is set school by school. With fewer schools, held-out error mostly
+measures which school was left out, not how well the model generalizes."""
+
+["market.model.ridge_grid"]
+description = "Ridge penalties tried on standardized features, chosen by leave-one-school-out error."
+unit = "dimensionless"
+basis = "modelling_choice"
+value = [0.1, 1.0, 10.0, 100.0]
+rationale = """From nearly unpenalized to nearly intercept-only on a few dozen rows; a
+decade apart because error is flat within a factor of three."""
+
+["market.model.require_beats_allocation"]
+description = "Use the fitted price only if its held-out log error beats the allocation's and a tier median."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """A model that cannot beat the transparent allocation out of sample adds
+complexity without adding accuracy."""
