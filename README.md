@@ -7,6 +7,7 @@
 [![Data license: CC BY 4.0](https://img.shields.io/badge/data%20license-CC%20BY%204.0-lightgrey.svg)](https://github.com/jman4162/athletevalue/blob/main/LICENSE-DATA)
 [![Typed](https://img.shields.io/badge/typing-mypy%20strict-informational.svg)](https://mypy-lang.org/)
 [![Docs](https://img.shields.io/badge/docs-methodology%20%26%20validation-informational.svg)](https://jman4162.github.io/athletevalue/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22818303.svg)](https://doi.org/10.5281/zenodo.22818303)
 
 What an NCAA men's basketball player's wins are worth to his school, and what a
 published roster budget would pay him. A Python package and CLI that rates players
@@ -258,10 +259,14 @@ If you use athletevalue in a publication, cite the software:
              program value and roster-market pay},
   year    = {2026},
   version = {0.4.0},
+  doi     = {10.5281/zenodo.22818304},
   url     = {https://github.com/jman4162/athletevalue},
   note    = {Python package, MIT license; data files CC BY 4.0}
 }
 ```
+
+`10.5281/zenodo.22818304` is release 0.4.0. Cite `10.5281/zenodo.22818303` instead to point at
+whichever version is current.
 
 [CITATION.cff](https://github.com/jman4162/athletevalue/blob/main/CITATION.cff) carries
 the same metadata in a machine-readable form. Estimates are research outputs; read
