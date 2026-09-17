@@ -6,7 +6,7 @@ import polars as pl
 
 from athletevalue.frames.games import build_season_games, combined_game_map
 from athletevalue.identity.crosswalk import team_crosswalk
-from athletevalue.sources.cache import ArtifactCache
+from athletevalue.sources.cache import ArtifactCache, RawArtifact, derived_path
 from athletevalue.sources.eada import EadaClient, EadaYearUnavailableError
 from athletevalue.sources.sportsdataverse import (
     FIRST_POSSESSION_SEASON,
@@ -16,54 +16,71 @@ from athletevalue.sources.sportsdataverse import (
 )
 from athletevalue.valuation.economy import EconomicsFrames
 
+_OUTCOME_INPUTS = (
+    SdvDataset.POSSESSIONS,
+    SdvDataset.SCHEDULE,
+    SdvDataset.ESPN_SCHEDULE,
+    SdvDataset.TEAM_IDS,
+)
 
-def season_outcomes(season: int, client: SdvClient) -> pl.DataFrame:
+
+def season_outcomes(season: int, client: SdvClient) -> tuple[pl.DataFrame, list[RawArtifact]]:
+    """One season's team results, and the artifacts they were built from."""
+    artifacts = {dataset: client.artifact(dataset, season) for dataset in _OUTCOME_INPUTS}
     possessions = (
-        pl.scan_parquet(client.artifact(SdvDataset.POSSESSIONS, season).path)
+        pl.scan_parquet(artifacts[SdvDataset.POSSESSIONS].path)
         .select("contest_id", "espn_game_id")
         .collect()
     )
-    schedule = client.frame(SdvDataset.SCHEDULE, season)
-    espn = client.frame(SdvDataset.ESPN_SCHEDULE, season)
+    schedule = pl.read_parquet(artifacts[SdvDataset.SCHEDULE].path)
+    espn = pl.read_parquet(artifacts[SdvDataset.ESPN_SCHEDULE].path)
     games = build_season_games(
         schedule,
         espn,
-        client.frame(SdvDataset.TEAM_IDS, season),
+        pl.read_parquet(artifacts[SdvDataset.TEAM_IDS].path),
         combined_game_map(possessions, schedule, espn),
     )
-    return games.teams.with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
+    frame = games.teams.with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
+    return frame, list(artifacts.values())
 
 
 def load_economics_frames(cache: ArtifactCache, *, last_season: int) -> EconomicsFrames:
     """Results for every season with possession data through *last_season*, and EADA finances."""
-    derived = f"derived/economics/outcomes_{FIRST_POSSESSION_SEASON}_{last_season}.parquet"
-    target = cache.path_for(derived)
-    sdv = SdvClient(cache)
-    if target.exists():
-        outcomes = pl.read_parquet(target)
-    else:
-        parts = []
-        for season in range(FIRST_POSSESSION_SEASON, last_season + 1):
+    seasons = range(FIRST_POSSESSION_SEASON, last_season + 1)
+    derived = derived_path("economics", f"outcomes_{FIRST_POSSESSION_SEASON}_{last_season}")
+    outcomes = cache.read_derived(derived)
+    if outcomes is None:
+        sdv = SdvClient(cache)
+        parts, artifacts = [], []
+        for season in seasons:
             try:
-                parts.append(season_outcomes(season, sdv))
+                frame, used = season_outcomes(season, sdv)
             except SeasonUnavailableError:
                 continue
+            parts.append(frame)
+            artifacts.extend(used)
         outcomes = pl.concat(parts, how="vertical_relaxed")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        outcomes.write_parquet(target)
+        cache.write_derived(derived, outcomes, sources=artifacts)
+    present = set(outcomes["season"].unique().to_list())
+    notes = [
+        f"no SportsDataverse results for {season}; the economics fit skips it"
+        for season in seasons
+        if season not in present
+    ]
 
     eada_client = EadaClient(cache)
     eada_parts = []
     sources = []
-    for season in range(FIRST_POSSESSION_SEASON, last_season + 1):
+    for season in seasons:
         try:
             eada_parts.append(eada_client.schools(season))
             sources.append(eada_client.reference(season))
-        except EadaYearUnavailableError:
-            continue
+        except EadaYearUnavailableError as error:
+            notes.append(f"{error}; the revenue panel skips it")
     return EconomicsFrames(
         outcomes=outcomes,
         eada=pl.concat(eada_parts, how="vertical_relaxed"),
         crosswalk=team_crosswalk(),
         sources=tuple(sources),
+        notes=tuple(notes),
     )

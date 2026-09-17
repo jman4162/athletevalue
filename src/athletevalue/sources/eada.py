@@ -12,13 +12,16 @@ from __future__ import annotations
 import json
 import warnings
 import zipfile
+from datetime import timedelta
 
 import polars as pl
 
 from athletevalue.schemas.source import LicenseTag, SourceKind, SourceReference
-from athletevalue.sources.cache import ArtifactCache, RawArtifact
+from athletevalue.sources.cache import ArtifactCache, RawArtifact, derived_path
 
 API_BASE = "https://ope.ed.gov/athletics/api/dataFiles"
+FILE_LIST_MAX_AGE = timedelta(days=30)
+"""The file list gains a year each autumn; older copies are refreshed when online."""
 
 SCHOOL_COLUMNS = (
     "unitid",
@@ -46,6 +49,7 @@ class EadaClient:
             relative_path="raw/eada/fileList.json",
             license_tag=LicenseTag.PUBLIC_DOMAIN,
             refresh=refresh,
+            max_age=FILE_LIST_MAX_AGE,
         )
         entries: list[dict[str, object]] = json.loads(artifact.path.read_text(encoding="utf-8"))
         return entries
@@ -67,10 +71,10 @@ class EadaClient:
 
     def schools(self, season: int) -> pl.DataFrame:
         """Sport-level rows for *season*, restricted to the columns this package uses."""
-        derived = f"derived/eada/schools_{season}.parquet"
-        target = self.cache.path_for(derived)
-        if target.exists():
-            return pl.read_parquet(target)
+        derived = derived_path("eada", f"schools_{season}", {"columns": SCHOOL_COLUMNS})
+        cached = self.cache.read_derived(derived)
+        if cached is not None:
+            return cached
         archive = self.archive(season)
         with zipfile.ZipFile(archive.path) as bundle:
             member = _school_member(bundle.namelist(), season)
@@ -88,9 +92,9 @@ class EadaClient:
             ),
             pl.lit(season).alias("season"),
         )
-        target.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(target)
-        self.cache.record_derived(derived, source=archive)
+        self.cache.write_derived(
+            derived, frame, sources=[archive], settings={"columns": SCHOOL_COLUMNS}
+        )
         return frame
 
     def reference(self, season: int) -> SourceReference:

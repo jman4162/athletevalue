@@ -12,8 +12,9 @@ from athletevalue.identity.resolve import resolve_team
 from athletevalue.impact.prior import PriorTrainingError
 from athletevalue.market.model import InsufficientLabelsError
 from athletevalue.market.registry import load_deal_registry
+from athletevalue.runtime import with_numerical_threads
 from athletevalue.schemas.registry import DealRecord
-from athletevalue.sources.cache import ArtifactCache, SourceUnavailableError
+from athletevalue.sources.cache import ArtifactCache, ArtifactMismatchError, SourceUnavailableError
 from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset
 from athletevalue.sources.torvik import TorvikClient
 from athletevalue.sports.mbb.economics_loaders import load_economics_frames
@@ -29,6 +30,7 @@ from athletevalue.valuation.team import team_draws
 from athletevalue.valuation.validate import ValidationReport, validate_season
 
 
+@with_numerical_threads
 def fit_season(
     season: int,
     *,
@@ -70,6 +72,7 @@ def fit_season(
     )
 
 
+@with_numerical_threads
 def validate(
     model: SeasonModel,
     *,
@@ -86,14 +89,16 @@ def validate(
     if use_torvik:
         try:
             torvik = TorvikClient(cache).team_results(model.season)
-        except SourceUnavailableError as error:
-            # barttorvik.com refuses some cloud address ranges; the comparison is
-            # optional and its absence is reported rather than hidden.
+        except (SourceUnavailableError, ArtifactMismatchError) as error:
+            # barttorvik.com refuses some cloud address ranges, and its files can be
+            # revised after the pinned copy; the comparison is optional and its
+            # absence is reported rather than hidden.
             notes = (f"Torvik comparison skipped: {error}",)
     report = validate_season(model, registry, reference_rapm=reference, torvik=torvik)
     return ValidationReport(season=report.season, gates=report.gates, notes=(*report.notes, *notes))
 
 
+@with_numerical_threads
 def fit_economics(
     last_season: int,
     *,
@@ -129,6 +134,7 @@ def _label_seasons(deals: list[DealRecord], registry: AssumptionRegistry) -> lis
     return sorted({d.season for d in labeled})
 
 
+@with_numerical_threads
 def fit_market(
     deals: list[DealRecord] | None = None,
     *,
@@ -178,6 +184,7 @@ def fit_market(
     )
 
 
+@with_numerical_threads
 def value_player(
     name: str,
     season: int,
@@ -239,6 +246,7 @@ def value_player(
     )
 
 
+@with_numerical_threads
 def value_team(
     team: str,
     season: int,

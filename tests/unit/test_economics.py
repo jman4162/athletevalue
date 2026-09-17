@@ -159,3 +159,17 @@ def test_program_value_scales_with_wins_and_revenue():
     delta = bids.probability(20 / 30, False) - bids.probability(18 / 30, False)
     np.testing.assert_allclose(two.bid_revenue, delta * 0.05 * 10e6)
     np.testing.assert_allclose(two.tournament_units, delta * 2.0 * 2e6 / 10)
+
+
+def test_bootstrap_is_unchanged_by_categoricals_cast_earlier_in_the_process():
+    panel, _ = _synthetic_panel()
+    first = fit_revenue_model(
+        panel, excluded_seasons=frozenset(), min_seasons=4, n_boot=5, rng=np.random.default_rng(2)
+    )
+    names = pl.Series([f"other {i}" for i in range(50)]).cast(pl.Categorical)
+    again = fit_revenue_model(
+        panel, excluded_seasons=frozenset(), min_seasons=4, n_boot=5, rng=np.random.default_rng(2)
+    )
+    assert names.len() == 50
+    assert again.n_schools == first.n_schools == 60
+    np.testing.assert_array_equal(again.draws, first.draws)

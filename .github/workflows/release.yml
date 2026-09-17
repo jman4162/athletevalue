@@ -51,7 +51,7 @@ jobs:
           /tmp/probe/bin/python -c \
             "import athletevalue, pathlib, sys; \
              root = pathlib.Path(athletevalue.__file__).parent; \
-             missing = [p for p in ('py.typed', 'data/identity/team_crosswalk.csv', 'data/deal_registry/mbb_deals.csv') if not (root / p).exists()]; \
+             missing = [p for p in ('py.typed', 'data/identity/team_crosswalk.csv', 'data/deal_registry/mbb_deals.csv', 'data/pinned_artifacts.json') if not (root / p).exists()]; \
              sys.exit(f'missing from the wheel: {missing}' if missing else 0)"
 
       - uses: actions/upload-artifact@v4

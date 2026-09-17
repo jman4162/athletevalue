@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .athletevalue-cache
-          key: athletevalue-data-${{ hashFiles('src/athletevalue/sources/**') }}
+          key: athletevalue-data-${{ hashFiles('src/athletevalue/sources/**', 'src/athletevalue/data/pinned_artifacts.json') }}
 
       - name: Install dependencies
         run: uv sync --group dev

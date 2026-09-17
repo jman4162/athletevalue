@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased (0.4.0)
+
+Reproducibility
+- Upstream files behind the documented numbers are pinned by SHA-256 in
+  `athletevalue/data/pinned_artifacts.json`. A download or cached copy that differs
+  from its pin raises `ArtifactMismatchError`; `allow_unpinned=True`
+  (`--allow-unpinned`) accepts it. `scripts/pin_artifacts.py` regenerates the file.
+- Derived files (EADA extracts, no-prior baselines, economics outcomes) are keyed on
+  the model version and settings, and record the digest of every input. A changed
+  input, release or setting makes them stale instead of silently reused.
+- Downloads retry HTTP 429, 5xx and connection failures with backoff, honouring
+  `Retry-After`. The EADA file list is refreshed after 30 days; `fetch --refresh`
+  downloads a season again.
+- `ATHLETEVALUE_DETERMINISTIC=1` runs BLAS on one thread, so repeated runs agree bit
+  for bit on one machine.
+- Seasons skipped because a source has not published them are reported as notes on
+  the economics model.
+
+Fixes
+- The revenue bootstrap and the market model numbered schools with polars categorical
+  codes. In recent polars those codes are shared across the process, so a second fit
+  in one session could see non-contiguous codes and resample empty schools. Codes are
+  now computed locally in order of first appearance, which gives the same numbering
+  the published fits used.
+- Cross-validation subtracts the held-out Gram in place and reuses one factor buffer,
+  cutting peak memory; results are bit-identical.
+
+Publishing
+- Releases publish from GitHub Actions through PyPI Trusted Publishing. The package
+  metadata no longer carries an email address.
+
 ## 0.3.1 (2026-09-17)
 
 Fixes and corrections from an adversarial review. 0.2.0 and 0.3.0 are yanked on PyPI.

@@ -46,9 +46,20 @@ class RidgeFit:
 
 def weighted_gram(X: sp.csr_matrix, w: FloatArray) -> FloatArray:
     """Dense ``X' W X``."""
-    weighted = sp.diags(w) @ X
-    gram: FloatArray = (X.T @ weighted).toarray()
+    gram: FloatArray = weighted_gram_sparse(X, w).toarray()
     return gram
+
+
+def weighted_gram_sparse(X: sp.csr_matrix, w: FloatArray) -> sp.coo_matrix:
+    """``X' W X`` without densifying, with duplicate entries summed."""
+    product = (X.T @ (sp.diags(w) @ X)).tocoo()
+    product.sum_duplicates()
+    return product
+
+
+def subtract_in_place(dense: FloatArray, sparse: sp.coo_matrix) -> None:
+    """``dense -= sparse`` touching only the sparse entries."""
+    dense[sparse.row, sparse.col] -= sparse.data
 
 
 def weighted_moment(X: sp.csr_matrix, w: FloatArray, y: FloatArray) -> FloatArray:
@@ -58,17 +69,33 @@ def weighted_moment(X: sp.csr_matrix, w: FloatArray, y: FloatArray) -> FloatArra
 
 
 def solve_penalized(
-    gram: FloatArray, moment: FloatArray, lam: float, penalized: NDArray[np.bool_]
+    gram: FloatArray,
+    moment: FloatArray,
+    lam: float,
+    penalized: NDArray[np.bool_],
+    *,
+    work: FloatArray | None = None,
 ) -> tuple[FloatArray, FloatArray]:
     """Solve ``(gram + lam P) gamma = moment``. Returns gamma and the Cholesky factor.
 
     An unpenalized column with no data (for example the pooled column when no
     player is pooled) would make the system singular. Its diagonal gets a unit
     entry, which pins its coefficient at zero without touching any other column.
+
+    *work*, a Fortran-ordered array shaped like *gram*, receives the factor in place;
+    callers solving many systems pass one buffer instead of allocating one per solve.
+    LAPACK copies any array that is not Fortran-ordered, so a C-ordered buffer would
+    save nothing.
     """
     if lam < 0:
         raise RidgeError(f"lambda must be non-negative, got {lam}")
-    system = gram.copy()
+    if work is None:
+        system = np.array(gram, dtype=np.float64, order="F")
+    else:
+        if work.shape != gram.shape or not work.flags.f_contiguous:
+            raise RidgeError("work buffer must be Fortran-ordered and shaped like the Gram")
+        np.copyto(work, gram)
+        system = work
     diagonal = np.diag_indices_from(system)
     system[diagonal] += lam * penalized + empty_unpenalized(gram, penalized)
     factor, info = lapack.dpotrf(system, lower=0, overwrite_a=1, clean=1)

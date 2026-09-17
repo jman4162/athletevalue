@@ -9,6 +9,7 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.constants import PLAYERS_ON_COURT
+from athletevalue.frames.codes import first_seen_codes
 from athletevalue.identity.names import normalize_name
 from athletevalue.identity.resolve import (
     AmbiguousPlayerError,
@@ -239,7 +240,7 @@ def fit_market(
     model = fit_market_model(
         data.select(FEATURES).to_numpy().astype(np.float64),
         data["log_pay"].to_numpy(),
-        data["team"].cast(pl.Categorical).to_physical().to_numpy().astype(np.int64),
+        first_seen_codes(data["team"]),
         data["tier"].to_numpy().astype(np.int64),
         features=FEATURES,
         ridge_grid=registry.get("market.model.ridge_grid").numbers(),

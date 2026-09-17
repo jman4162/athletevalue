@@ -12,6 +12,7 @@ import typer
 from athletevalue import api
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.sources.cache import ArtifactCache
+from athletevalue.sources.eada import EadaClient
 from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset
 from athletevalue.valuation.report import money
 
@@ -44,6 +45,11 @@ def _registry(paths: list[Path] | None) -> AssumptionRegistry:
 def fetch(
     season: SeasonOption,
     economics: bool = typer.Option(True, help="Also fetch EADA and past seasons."),
+    refresh: bool = typer.Option(
+        False,
+        "--refresh",
+        help="Download this season's files and the EADA file list again, even if cached.",
+    ),
 ) -> None:
     """Download and cache one season's inputs."""
     cache = ArtifactCache.default()
@@ -53,17 +59,23 @@ def fetch(
         SdvDataset.TEAM_IDS,
         SdvDataset.SCHEDULE,
         SdvDataset.ESPN_SCHEDULE,
+        SdvDataset.PLAYER_BOX,
         SdvDataset.REFERENCE_RAPM,
     ):
-        artifact = client.artifact(dataset, season)
+        artifact = client.artifact(dataset, season, refresh=refresh)
+        pin = "pinned" if artifact.pinned else "unpinned"
         typer.echo(
-            f"{dataset.value:<45} {artifact.byte_count / 1e6:7.1f} MB  sha256 {artifact.sha256[:12]}"
+            f"{dataset.value:<45} {artifact.byte_count / 1e6:7.1f} MB  sha256 {artifact.sha256[:12]}  {pin}"
         )
+    if refresh:
+        EadaClient(cache).file_list(refresh=True)
     if economics:
         frames = api.load_economics_frames(cache, last_season=season)
         typer.echo(
             f"economics inputs: {frames.outcomes.height} team-seasons, {frames.eada.height} EADA rows"
         )
+        for note in frames.notes:
+            typer.echo(f"note: {note}")
     typer.echo(f"cache: {cache.root}")
 
 

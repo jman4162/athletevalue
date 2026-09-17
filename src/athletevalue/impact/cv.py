@@ -3,7 +3,9 @@
 Rows from one game share players, opponents and game state, so splitting a game
 across folds leaks information. Folds therefore hold out whole games. Each
 fold's Gram matrix is the full Gram minus the held-out part, so the expensive
-product is computed once.
+product is computed once. The held-out part stays sparse and is subtracted in
+place, and every solve reuses one factor buffer, so a fold needs two dense Gram
+copies beyond the full one rather than five.
 """
 
 from __future__ import annotations
@@ -19,7 +21,14 @@ from numpy.typing import NDArray
 from athletevalue.frames.possessions import LineupData
 from athletevalue.impact.design import Design
 from athletevalue.impact.prior import prior_offset, team_adjust
-from athletevalue.impact.ridge import solve_penalized, weighted_gram, weighted_moment
+from athletevalue.impact.ridge import (
+    FloatArray,
+    solve_penalized,
+    subtract_in_place,
+    weighted_gram,
+    weighted_gram_sparse,
+    weighted_moment,
+)
 
 
 @dataclass(frozen=True)
@@ -70,16 +79,17 @@ def cv_with_folds(
     target = design.y if offset is None else design.y - design.X @ offset
     full_gram = weighted_gram(design.X, design.w)
     full_moment = weighted_moment(design.X, design.w, target)
+    gram, work = _buffers(full_gram)
     errors = np.zeros((n_folds, len(lambdas)))
     for fold in range(n_folds):
         held = folds == fold
         X_held = design.X[held]
         w_held = design.w[held]
         y_held = target[held]
-        gram = full_gram - weighted_gram(X_held, w_held)
+        _held_out_gram(gram, full_gram, X_held, w_held)
         moment = full_moment - weighted_moment(X_held, w_held, y_held)
         for k, lam in enumerate(lambdas):
-            beta, _ = solve_penalized(gram, moment, lam, design.penalized)
+            beta, _ = solve_penalized(gram, moment, lam, design.penalized, work=work)
             residual = y_held - X_held @ beta
             errors[fold, k] = np.sum(w_held * residual**2) / np.sum(w_held)
     mean = errors.mean(axis=0)
@@ -121,16 +131,21 @@ def cv_with_prior(
     """
     n_folds = int(folds.max()) + 1
     full_gram = weighted_gram(design.X, design.w)
+    gram, work = _buffers(full_gram)
     without = 0.0
     errors = np.zeros((n_folds, len(lambdas)))
     for fold in range(n_folds):
         held = folds == fold
         train = ~held
         X_held, w_held = design.X[held], design.w[held]
-        gram = full_gram - weighted_gram(X_held, w_held)
+        _held_out_gram(gram, full_gram, X_held, w_held)
         X_train, w_train = design.X[train], design.w[train]
         beta_none, _ = solve_penalized(
-            gram, weighted_moment(X_train, w_train, design.y[train]), lam_baseline, design.penalized
+            gram,
+            weighted_moment(X_train, w_train, design.y[train]),
+            lam_baseline,
+            design.penalized,
+            work=work,
         )
         without += _held_error(X_held, w_held, design.y[held], beta_none) / n_folds
 
@@ -141,7 +156,7 @@ def cv_with_prior(
         target = design.y - design.X @ offset
         moment = weighted_moment(X_train, w_train, target[train])
         for k, lam in enumerate(lambdas):
-            gamma, _ = solve_penalized(gram, moment, lam, design.penalized)
+            gamma, _ = solve_penalized(gram, moment, lam, design.penalized, work=work)
             errors[fold, k] = _held_error(X_held, w_held, target[held], gamma)
     mean = errors.mean(axis=0)
     se = errors.std(axis=0, ddof=1) / np.sqrt(n_folds) if n_folds > 1 else np.zeros_like(mean)
@@ -194,3 +209,16 @@ def _held_error(
 ) -> float:
     residual = y - X @ beta
     return float(np.sum(w * residual**2) / np.sum(w))
+
+
+def _buffers(full_gram: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """A training-Gram buffer and a factor buffer, both Fortran-ordered."""
+    return np.empty_like(full_gram, order="F"), np.empty_like(full_gram, order="F")
+
+
+def _held_out_gram(
+    out: FloatArray, full_gram: FloatArray, X_held: sp.csr_matrix, w_held: FloatArray
+) -> None:
+    """Write the training rows' Gram, the full Gram minus the held-out rows', into *out*."""
+    np.copyto(out, full_gram)
+    subtract_in_place(out, weighted_gram_sparse(X_held, w_held))

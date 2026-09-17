@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
-
 import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.frames.box import player_box_totals
 from athletevalue.impact.prior import BoxPriorModel, PriorTrainingError, fit_box_prior
-from athletevalue.sources.cache import ArtifactCache
+from athletevalue.sources.cache import ArtifactCache, derived_path
 from athletevalue.sources.sportsdataverse import (
     FIRST_POSSESSION_SEASON,
     SdvClient,
@@ -18,7 +15,6 @@ from athletevalue.sources.sportsdataverse import (
     SeasonUnavailableError,
 )
 from athletevalue.valuation.season import SeasonFrames, baseline_rapm
-from athletevalue.versions import MODEL_VERSION
 
 _INPUTS = (
     SdvDataset.POSSESSIONS,
@@ -63,17 +59,15 @@ def cached_baseline(
     season: int, cache: ArtifactCache, registry: AssumptionRegistry
 ) -> pl.DataFrame:
     """No-prior rating table for *season*, from the cache when the same settings made it."""
-    settings = json.dumps(
-        {key: registry.get(key).value for key in _BASELINE_KEYS}, sort_keys=True, default=str
-    )
-    digest = hashlib.sha256(f"{MODEL_VERSION}{settings}".encode()).hexdigest()[:12]
-    relative = f"derived/rapm/baseline_{season}_{digest}.parquet"
-    target = cache.path_for(relative)
-    if target.exists():
-        return pl.read_parquet(target)
+    settings = {key: registry.get(key).value for key in _BASELINE_KEYS}
+    relative = derived_path("rapm", f"baseline_{season}", settings)
+    cached = cache.read_derived(relative)
+    if cached is not None:
+        return cached
     table = baseline_rapm(load_season_frames(season, cache), registry).table
-    target.parent.mkdir(parents=True, exist_ok=True)
-    table.write_parquet(target)
+    client = SdvClient(cache)
+    sources = [client.artifact(dataset, season) for dataset in _INPUTS]
+    cache.write_derived(relative, table, sources=sources, settings=settings)
     return table
 
 

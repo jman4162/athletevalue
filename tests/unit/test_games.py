@@ -41,3 +41,13 @@ def test_records_bids_and_neutral_sites():
     assert teams["A"]["ncaa_bid"] and teams["A"]["ncaa_games"] == 2 and teams["A"]["ncaa_wins"] == 2
     assert teams["B"]["ncaa_bid"] and teams["B"]["ncaa_wins"] == 0
     assert result.games.filter(pl.col("neutral")).height == 2
+
+
+def test_first_seen_codes_are_contiguous_in_order_of_appearance():
+    from athletevalue.frames.codes import first_seen_codes
+
+    # Categorical physical codes are shared across the process in recent polars, so
+    # a cast elsewhere must not shift these codes.
+    earlier = pl.Series(["zz", "yy", "c"]).cast(pl.Categorical)  # noqa: F841 (kept alive)
+    values = pl.Series(["b", "a", "b", "c", "a"])
+    assert first_seen_codes(values).tolist() == [0, 1, 0, 2, 1]

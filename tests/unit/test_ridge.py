@@ -6,7 +6,7 @@ import scipy.sparse as sp
 
 from athletevalue.impact.design import build_design
 from athletevalue.impact.rapm import fit_rapm
-from athletevalue.impact.ridge import RidgeError, fit_ridge
+from athletevalue.impact.ridge import RidgeError, fit_ridge, solve_penalized
 from tests.fixtures.synthetic import make_season
 
 
@@ -139,3 +139,19 @@ def test_fit_rapm_reports_pooled_players_and_scale():
     assert result.home_court == pytest.approx(3.0, abs=1.5)
     assert result.non_d1_net < -20
     assert 0 < result.df < design.n_columns
+
+
+def test_work_buffer_holds_the_factor_and_matches_a_fresh_solve():
+
+    rng = np.random.default_rng(3)
+    A = rng.normal(size=(40, 6))
+    gram = A.T @ A
+    moment = A.T @ rng.normal(size=40)
+    penalized = np.array([True] * 5 + [False])
+    fresh, _ = solve_penalized(gram, moment, 2.0, penalized)
+    work = np.empty_like(gram, order="F")
+    reused, factor = solve_penalized(gram, moment, 2.0, penalized, work=work)
+    np.testing.assert_array_equal(fresh, reused)
+    assert np.shares_memory(factor, work)
+    with pytest.raises(RidgeError, match="Fortran"):
+        solve_penalized(gram, moment, 2.0, penalized, work=np.empty_like(gram, order="C"))

@@ -22,6 +22,8 @@ class EconomicsFrames:
     eada: pl.DataFrame
     crosswalk: pl.DataFrame
     sources: tuple[SourceReference, ...] = field(default=())
+    notes: tuple[str, ...] = field(default=())
+    """Seasons skipped because a source has not published them, and similar."""
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class EconomicsModel:
     power_conferences: frozenset[str]
     reference_seasons: int
     sources: tuple[SourceReference, ...]
+    notes: tuple[str, ...] = ()
 
     def context(
         self, team: str, *, season: int, games: int, wins: int, conference: str, members: int
@@ -80,4 +83,5 @@ def assemble_economics(
         power_conferences=power,
         reference_seasons=int(registry.get("economics.revenue_reference_seasons").scalar()),
         sources=frames.sources,
+        notes=frames.notes,
     )

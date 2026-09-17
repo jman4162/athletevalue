@@ -23,6 +23,8 @@ import numpy as np
 import polars as pl
 from numpy.typing import NDArray
 
+from athletevalue.frames.codes import first_seen_codes
+
 FloatArray = NDArray[np.float64]
 
 TERMS = ("wins", "wins_lag", "bid", "bid_lag")
@@ -104,7 +106,7 @@ def fit_revenue_model(
             sample["bid_lag"].cast(pl.Float64).to_numpy(),
         ]
     )
-    school_codes = sample["team"].cast(pl.Categorical).to_physical().to_numpy().astype(np.int64)
+    school_codes = first_seen_codes(sample["team"])
     season_codes = np.unique(sample["season"].to_numpy(), return_inverse=True)[1]
     point = _two_way_fe(y, X, school_codes, season_codes)
 
