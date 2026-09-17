@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from athletevalue.schemas.estimate import Estimate
 from athletevalue.schemas.evidence import EvidenceStatus
 from athletevalue.valuation.result import PlayerValuation
@@ -10,7 +12,9 @@ _LABEL_WIDTH = 22
 _VALUE_WIDTH = 14
 
 
-def money(value: float) -> str:
+def money(value: float | None) -> str:
+    if value is None or not math.isfinite(value):
+        return "n/a"
     sign = "-" if value < 0 else ""
     magnitude = abs(value)
     if magnitude >= 1e6:

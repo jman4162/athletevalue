@@ -57,3 +57,28 @@ def test_combined_map_prefers_possession_ids():
     assert combined_game_map(possessions, schedule, espn).to_dicts() == [
         {"contest_id": "c1", "espn_game_id": "999"}
     ]
+
+
+def test_abbreviated_names_match_through_crosswalk_aliases():
+    schedule = pl.DataFrame(
+        {
+            "contest_id": ["c1", "c2"],
+            "game_date": ["03/21/2019", "03/22/2018"],
+            "home": ["Gonzaga", "Southern California"],
+            "away": ["FDU", "UNI"],
+            "home_score": [1, 1],
+            "away_score": [0, 0],
+        }
+    )
+    espn = pl.DataFrame(
+        {
+            "game_id": [100, 200],
+            "game_date": [date(2019, 3, 21), date(2018, 3, 22)],
+            "home_location": ["Gonzaga", "USC"],
+            "away_location": ["Fairleigh Dickinson", "Northern Iowa"],
+            "neutral_site": [True, True],
+            "season_type": [3, 2],
+        }
+    )
+    assert dict(match_espn_games(schedule, espn).iter_rows()) == {"c1": "100", "c2": "200"}
+    assert match_espn_games(schedule, espn, aliases={}).is_empty()

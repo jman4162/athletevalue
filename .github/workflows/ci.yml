@@ -12,11 +12,15 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python: ["3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python: "3.12"
     steps:
       - uses: actions/checkout@v4
 
@@ -49,3 +53,33 @@ jobs:
         run: |
           uv build
           uvx twine check dist/*
+
+  wheel:
+    # Installs the built wheel into a clean environment, away from the source tree,
+    # so a missing data file or an undeclared dependency fails here and not on PyPI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: uv build
+
+      - name: Sdist contents
+        run: |
+          tar -tzf dist/*.tar.gz > sdist.txt
+          ! grep -E "CLAUDE.md|\.local\.md|\.github/|uv.lock" sdist.txt
+          grep -q "tests/fixtures/eada/schools.xlsx" sdist.txt
+
+      - name: Install the wheel and run the CLI offline
+        working-directory: ${{ runner.temp }}
+        run: |
+          uv venv probe
+          uv pip install --python probe "$(ls ${{ github.workspace }}/dist/*.whl)"
+          probe/bin/athletevalue assumptions | head -3
+          probe/bin/athletevalue --offline --cache-dir empty cache info
+          probe/bin/python -c "import athletevalue.api as api; print(api.Session)"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import polars as pl
@@ -16,6 +17,7 @@ from athletevalue.frames.columns import (
     TEAM_ID_COLUMNS,
     require_columns,
 )
+from athletevalue.identity.crosswalk import team_aliases
 from athletevalue.identity.names import similarity
 
 
@@ -38,13 +40,20 @@ def espn_game_map(possessions: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def match_espn_games(schedule: pl.DataFrame, espn_schedule: pl.DataFrame) -> pl.DataFrame:
+def match_espn_games(
+    schedule: pl.DataFrame,
+    espn_schedule: pl.DataFrame,
+    aliases: Mapping[str, Sequence[str]] | None = None,
+) -> pl.DataFrame:
     """contest_id to ESPN game id for neutral-site and postseason games, by date and names.
 
     Only those games change a venue or a tournament flag, so only they are matched.
     A pair must fall within a day of each other and both team names must be similar;
-    the best-scoring pairs are taken one to one.
+    the best-scoring pairs are taken one to one. A stats.ncaa.org name is compared
+    under each of its *aliases* too (default: institution names from the team
+    crosswalk), which is how "UNI" matches ESPN's "Northern Iowa".
     """
+    names = team_aliases() if aliases is None else aliases
     empty = pl.DataFrame(schema={"contest_id": pl.Utf8, "espn_game_id": pl.Utf8})
     ncaa = schedule.select(
         "contest_id",
@@ -82,7 +91,9 @@ def match_espn_games(schedule: pl.DataFrame, espn_schedule: pl.DataFrame) -> pl.
             return 0.0
         key = (left, right)
         if key not in cache:
-            cache[key] = similarity(left, right)
+            cache[key] = max(
+                similarity(candidate, right) for candidate in (left, *names.get(left, ()))
+            )
         return cache[key]
 
     scores = [

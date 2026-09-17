@@ -19,12 +19,18 @@ the wrong PyPI account.
 
 1. Update `version` in `pyproject.toml`, `__version__` and `MODEL_VERSION` in
    `src/athletevalue/versions.py`, `version` in `CITATION.cff`, and `CHANGELOG.md`.
-2. Commit and push to `main`; wait for CI.
-3. `git tag -a vX.Y.Z -m "athletevalue X.Y.Z"` and `git push origin vX.Y.Z`.
+   Between releases, bump the `.devN` suffix of `MODEL_VERSION` whenever a change
+   alters what a derived cache file contains: derived-file keys see the model
+   version, settings and input digests, not code.
+2. If upstream files were re-fetched for this release, run the live suite, check
+   the documented numbers against that cache, and regenerate the pins with
+   `uv run python scripts/pin_artifacts.py`.
+3. Commit and push to `main`; wait for CI.
+4. `git tag -a vX.Y.Z -m "athletevalue X.Y.Z"` and `git push origin vX.Y.Z`.
    The tag runs:
    - `regression.yml`: full-season fits against live data and every cited page;
    - `release.yml`: checks the tag matches the version, builds, rejects an email in
      the metadata, smoke-tests the wheel outside the checkout, and publishes.
-4. Confirm the release on https://pypi.org/project/athletevalue/.
+5. Confirm the release on https://pypi.org/project/athletevalue/.
 
 Yanking a bad release has no API; use the project's Manage → Releases page.

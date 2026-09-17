@@ -71,6 +71,31 @@ def cached_baseline(
     return table
 
 
+def prior_training_candidates(
+    target: int, registry: AssumptionRegistry, *, last_season: int
+) -> list[int]:
+    """Seasons the box-score prior for *target* would train on, before availability checks."""
+    available = list(range(FIRST_POSSESSION_SEASON, min(last_season, target - 1) + 1))
+    count = int(registry.get("mbb.prior.training_seasons").scalar())
+    return training_seasons(target, count, available)
+
+
+def fetch_prior_inputs(
+    target: int, cache: ArtifactCache, registry: AssumptionRegistry, *, last_season: int
+) -> list[int]:
+    """Download the files the prior for *target* trains on. Returns the seasons found."""
+    client = SdvClient(cache)
+    found = []
+    for season in prior_training_candidates(target, registry, last_season=last_season):
+        try:
+            for dataset in _INPUTS:
+                client.artifact(dataset, season)
+        except SeasonUnavailableError:
+            continue
+        found.append(season)
+    return found
+
+
 def load_box_prior(
     target: int, cache: ArtifactCache, registry: AssumptionRegistry, *, last_season: int
 ) -> BoxPriorModel:
@@ -80,10 +105,8 @@ def load_box_prior(
     excluded regardless.
     """
     client = SdvClient(cache)
-    available = list(range(FIRST_POSSESSION_SEASON, min(last_season, target - 1) + 1))
-    count = int(registry.get("mbb.prior.training_seasons").scalar())
     training = []
-    for season in training_seasons(target, count, available):
+    for season in prior_training_candidates(target, registry, last_season=last_season):
         try:
             box = player_box_totals(client.frame(SdvDataset.PLAYER_BOX, season))
             training.append((season, cached_baseline(season, cache, registry), box))

@@ -72,3 +72,18 @@ def test_typed_accessors(registry):
     assert registry.get("mbb.impact.drop_garbage_time").flag() is True
     with pytest.raises(TypeError):
         registry.get("mbb.impact.lambda_grid").scalar()
+
+
+def test_registry_digest_changes_with_any_override(tmp_path, registry):
+    assert registry.digest == AssumptionRegistry.load().digest
+    override = tmp_path / "override.toml"
+    override.write_text(
+        '["mbb.impact.ridge_lambda"]\n'
+        "value = 3000.0\n"
+        'description = "what-if"\n'
+        'unit = "dimensionless"\n'
+        'basis = "user_input"\n'
+        'status = "scenario"\n',
+        encoding="utf-8",
+    )
+    assert AssumptionRegistry.load(extra_paths=(override,)).digest != registry.digest

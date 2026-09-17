@@ -18,7 +18,28 @@ Reproducibility
 - Seasons skipped because a source has not published them are reported as notes on
   the economics model.
 
+API and CLI
+- `api.Session` holds a cache and a registry and reuses fitted seasons, economics
+  models and market fits, keyed on the season settings, the registry digest and the
+  model version. Module-level functions share a default session. `value_player` and
+  `value_team` accept `model=` and `economics_model=`.
+- Global CLI options `--offline`, `--cache-dir` and `--allow-unpinned`; `cache info`,
+  `cache verify` and `cache clear`; `--no-economics` for `value` and `team`. `fetch`
+  also downloads the seasons the box-score prior trains on, so later commands can run
+  offline. Missing files, pin mismatches and refused downloads print one line instead
+  of a traceback.
+- `api.load_economics_frames` is no longer exported; import it from
+  `athletevalue.sports.mbb.economics_loaders`.
+
 Fixes
+- Neutral-site and NCAA tournament games before 2023, which carry no ESPN ids, are
+  matched by date and names. Abbreviated box-score names ("UNI", "SFA", "FDU") and
+  ESPN's "USC" did not match, so 1 to 7 tournament games a season were missed and
+  5% to 8% of neutral-site and postseason games kept a home-court flag. Names are now also
+  compared with their crosswalk institution names and a short curated alias list.
+  Every tournament game in 2012-2026 is matched, and at least 99% of neutral-site and
+  postseason games in every season. This changes bids and tournament wins in the
+  economics inputs, and venue flags in pre-2023 seasons.
 - The revenue bootstrap and the market model numbered schools with polars categorical
   codes. In recent polars those codes are shared across the process, so a second fit
   in one session could see non-contiguous codes and resample empty schools. Codes are

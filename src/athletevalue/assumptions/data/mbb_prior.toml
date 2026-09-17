@@ -13,13 +13,13 @@ adjustment reaches 5,182.1 in 2026. The `prior_cv_error_ratio` gate rechecks the
 prior for every season validated."""
 
 ["mbb.prior.training_seasons"]
-description = "Nearest other seasons used to fit the box model; ties go to the earlier season."
+description = "Most recent seasons before the target season used to fit the box model."
 unit = "count"
 basis = "modelling_choice"
 value = 4.0
 rationale = """Four seasons give about 13,000 player-seasons, enough for 14 coefficients,
-while staying within one rules and pace era. Only other seasons are used so the prior
-never sees the season it is applied to."""
+while staying within one rules and pace era. Only earlier seasons are used so the prior
+never sees the season it is applied to or any later one."""
 
 ["mbb.prior.rate_pseudo_possessions"]
 description = "League-average possessions added to each player's box rates before prediction."

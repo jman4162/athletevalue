@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import tomllib
 from collections.abc import Iterator
-from functools import cache
+from functools import cache, cached_property
 from importlib import resources
 from pathlib import Path
 from typing import Any, Self
@@ -53,6 +55,15 @@ class AssumptionRegistry:
 
     def __contains__(self, assumption_id: object) -> bool:
         return assumption_id in self._assumptions
+
+    @cached_property
+    def digest(self) -> str:
+        """SHA-256 of every entry, so caches keyed on it change when any entry does."""
+        payload = json.dumps(
+            [self._assumptions[key].model_dump(mode="json") for key in sorted(self._assumptions)],
+            sort_keys=True,
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()
 
 
 @cache

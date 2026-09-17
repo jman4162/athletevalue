@@ -35,7 +35,7 @@ dependencies = [
 ]
 
 [project.scripts]
-athletevalue = "athletevalue.cli.main:app"
+athletevalue = "athletevalue.cli.main:run"
 
 [project.urls]
 Homepage = "https://github.com/jman4162/athletevalue"
@@ -63,7 +63,24 @@ build-backend = "hatchling.build"
 packages = ["src/athletevalue"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [".github", ".venv*", "site", "*.local.md"]
+# An explicit list: the sdist carries what is needed to build, test and cite the
+# package, and nothing from local tooling or notes.
+only-include = [
+    "src",
+    "tests",
+    "scripts",
+    "CHANGELOG.md",
+    "CITATION.cff",
+    "CONTRIBUTING.md",
+    "DISCLAIMER.md",
+    "LICENSE",
+    "LICENSE-DATA",
+    "METHODOLOGY.md",
+    "PRIVACY.md",
+    "README.md",
+    "pyproject.toml",
+]
+exclude = ["__pycache__", "*.pyc"]
 
 # ---------------------------------------------------------------------------
 # Lint / format
@@ -123,7 +140,6 @@ markers = [
 [tool.coverage.run]
 source = ["src/athletevalue"]
 branch = true
-omit = ["src/athletevalue/cli/*"]
 
 # ---------------------------------------------------------------------------
 # Layer boundaries
