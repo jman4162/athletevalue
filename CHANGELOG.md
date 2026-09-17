@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 (2026-09-17)
+
+- Box-score prior for RAPM: a ridge model of per-100 box rates fitted on the four
+  nearest other seasons, with a Box Plus/Minus style team adjustment, used as the
+  shrinkage target (λ = 3000). Held-out error falls 0.3% in 2025 and 2026, next-season
+  correlation for returning players rises from 0.40 to 0.52, and team ratings match
+  Torvik's scale (slope 0.96 vs 0.81).
+- New validation gate `prior_cv_error_ratio`, computed with the team adjustment refit
+  on training games only so held-out games cannot leak into the prior.
+- `athletevalue fit --prior/--no-prior`; rating tables gain a `prior_net` column and
+  valuations a driver showing how far possessions moved a player from his prior.
+- The reference-RAPM gate compares the no-prior fit, which matches the reference's
+  estimand.
+- Model version `mbb-v0.2.0`.
+
 ## 0.1.0 (2026-09-16)
 
 First release, men's basketball.

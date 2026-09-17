@@ -67,18 +67,30 @@ def fit(
         False, "--cv", help="Choose the penalty by cross-validation grouped on games."
     ),
     top: int = typer.Option(25, help="Players to print."),
+    prior: bool | None = typer.Option(
+        None,
+        "--prior/--no-prior",
+        help="Shrink toward the box-score prior. Default from the registry.",
+    ),
     output: Path | None = typer.Option(
         None, help="Write the full rating table to this parquet file."
     ),
     assumptions: AssumptionsOption = None,
 ) -> None:
     """Fit RAPM for a season and print the top players."""
-    model = api.fit_season(season, registry=_registry(assumptions), choose_lambda_by_cv=cv)
+    model = api.fit_season(
+        season, registry=_registry(assumptions), choose_lambda_by_cv=cv, prior=prior
+    )
     rapm = model.rapm
     typer.echo(
         f"season {season}: {rapm.n_possessions:,} possessions, {rapm.n_rows:,} lineup rows, "
-        f"lambda {rapm.lam:g}, intercept {rapm.intercept:.1f}, home court {rapm.home_court:+.2f}/100 per side"
+        f"lambda {rapm.lam:g}, prior {rapm.prior}, intercept {rapm.intercept:.1f}, home court {rapm.home_court:+.2f}/100 per side"
     )
+    if model.prior is not None:
+        seasons = ", ".join(str(s) for s in model.prior.train_seasons)
+        typer.echo(
+            f"box prior fitted on {seasons}: in-sample R^2 offense {model.prior.r2_off:.2f}, defense {model.prior.r2_def:.2f}"
+        )
     if rapm.cv is not None:
         for lam, err in zip(rapm.cv.lambdas, rapm.cv.mean_error, strict=True):
             typer.echo(f"  cv lambda {lam:>8g}  held-out weighted MSE {err:,.1f}")
@@ -86,7 +98,7 @@ def fit(
     for rank, row in enumerate(shown.iter_rows(named=True), start=1):
         typer.echo(
             f"{rank:>3}. {row['name']:<24} {row['team']:<20} net {row['net']:+6.1f} ± {row['se_net']:.1f}"
-            f"  (off {row['orapm']:+.1f}, def {row['drapm']:+.1f})  {row['off_poss']:>5} poss"
+            f"  (off {row['orapm']:+.1f}, def {row['drapm']:+.1f}, prior {row['prior_net']:+.1f})  {row['off_poss']:>5} poss"
         )
     if output is not None:
         rapm.table.write_parquet(output)

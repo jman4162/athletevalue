@@ -22,6 +22,23 @@ IMPACT_ASSUMPTIONS = (
     "mbb.impact.min_possessions",
     "mbb.impact.drop_garbage_time",
 )
+PRIOR_ASSUMPTIONS = (
+    "mbb.prior.use_box_prior",
+    "mbb.prior.training_seasons",
+    "mbb.prior.rate_pseudo_possessions",
+    "mbb.prior.box_ridge",
+    "mbb.prior.team_adjustment",
+    "mbb.impact.ridge_lambda_with_prior",
+)
+
+
+def impact_assumptions(season: SeasonModel) -> tuple[str, ...]:
+    """Registry entries behind the headline ratings of *season*."""
+    if season.rapm.prior == "box":
+        return (*IMPACT_ASSUMPTIONS, *PRIOR_ASSUMPTIONS)
+    return IMPACT_ASSUMPTIONS
+
+
 WAR_ASSUMPTIONS = (
     "mbb.wins.replacement_level",
     "mbb.wins.game_margin_sd",

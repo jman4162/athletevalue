@@ -8,14 +8,17 @@ from typing import Any
 
 import numpy as np
 import polars as pl
+from numpy.typing import NDArray
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.constants import PER_100
-from athletevalue.frames.games import build_season_games, combined_game_map
-from athletevalue.frames.possessions import build_lineup_data
+from athletevalue.frames.box import player_box_totals
+from athletevalue.frames.games import SeasonGames, build_season_games, combined_game_map
+from athletevalue.frames.possessions import LineupData, build_lineup_data
 from athletevalue.frames.team_possessions import team_possession_totals
 from athletevalue.impact.cv import CvResult, cv_lambda
-from athletevalue.impact.design import build_design
+from athletevalue.impact.design import Design
+from athletevalue.impact.prior import BoxPriorModel, prior_offset, team_adjust
 from athletevalue.impact.rapm import RapmResult, fit_rapm
 from athletevalue.impact.reconstruct import team_ratings
 from athletevalue.schemas.source import SourceReference
@@ -30,6 +33,7 @@ class SeasonFrames:
     team_ids: pl.DataFrame
     schedule: pl.DataFrame
     espn_schedule: pl.DataFrame
+    player_box: pl.DataFrame | None = None
     sources: tuple[SourceReference, ...] = field(default=())
 
 
@@ -37,6 +41,15 @@ class SeasonFrames:
 class SeasonModel:
     season: int
     rapm: RapmResult
+    """Headline ratings: with the box-score prior when one was supplied."""
+    baseline: RapmResult
+    """Ratings shrunk toward zero; compared with the published reference RAPM."""
+    prior: BoxPriorModel | None
+    design: Design
+    prior_offset: NDArray[np.float64] | None
+    lineups: LineupData
+    box_predictions: pl.DataFrame | None
+    """Unadjusted box-model predictions, kept so validation can refit the adjustment per fold."""
     teams: pl.DataFrame
     """team, conference, games, wins, losses, ncaa_bid, ncaa_games, ncaa_wins, ortg,
     drtg, pace, adj_off, adj_def, adj_net, lineup_poss, n_conference_members."""
@@ -103,15 +116,10 @@ class SeasonModel:
         return rows.row(0, named=True)
 
 
-def assemble_season(
-    frames: SeasonFrames,
-    registry: AssumptionRegistry,
-    *,
-    lam: float | None = None,
-    choose_lambda_by_cv: bool = False,
-    seed: int = 0,
-) -> SeasonModel:
-    season = frames.season
+def season_lineups(
+    frames: SeasonFrames, registry: AssumptionRegistry
+) -> tuple[SeasonGames, LineupData]:
+    """Game results and lineup rows, with neutral sites resolved."""
     game_map = combined_game_map(frames.possessions, frames.schedule, frames.espn_schedule)
     season_games = build_season_games(
         frames.schedule, frames.espn_schedule, frames.team_ids, game_map
@@ -123,22 +131,75 @@ def assemble_season(
         neutral_contests=neutral,
         drop_garbage_time=registry.get("mbb.impact.drop_garbage_time").flag(),
     )
+    return season_games, lineups
+
+
+def baseline_rapm(frames: SeasonFrames, registry: AssumptionRegistry) -> RapmResult:
+    """Ratings shrunk toward zero with the registry penalty; the box prior's training target."""
+    _, lineups = season_lineups(frames, registry)
+    result, _, _ = fit_rapm(
+        lineups,
+        season=frames.season,
+        lam=registry.get("mbb.impact.ridge_lambda").scalar(),
+        min_possessions=registry.get("mbb.impact.min_possessions").scalar(),
+    )
+    return result
+
+
+def assemble_season(
+    frames: SeasonFrames,
+    registry: AssumptionRegistry,
+    *,
+    lam: float | None = None,
+    choose_lambda_by_cv: bool = False,
+    seed: int = 0,
+    prior: BoxPriorModel | None = None,
+) -> SeasonModel:
+    """Fit one season. With *prior* and box scores in *frames*, ratings shrink toward it."""
+    season = frames.season
+    season_games, lineups = season_lineups(frames, registry)
     min_poss = registry.get("mbb.impact.min_possessions").scalar()
 
+    baseline_lam = registry.get("mbb.impact.ridge_lambda").scalar()
+    baseline, design, baseline_fit = fit_rapm(
+        lineups, season=season, lam=baseline_lam, min_possessions=min_poss
+    )
+    predictions = None
+    box_predictions = None
+    offset = None
+    if prior is not None and frames.player_box is not None:
+        box_predictions = prior.predict(player_box_totals(frames.player_box))
+        predictions = box_predictions
+        if registry.get("mbb.prior.team_adjustment").flag():
+            predictions = team_adjust(box_predictions, lineups, design, baseline_fit.beta)
+        offset = prior_offset(design, predictions)
+    headline_lam = registry.get(
+        "mbb.impact.ridge_lambda" if offset is None else "mbb.impact.ridge_lambda_with_prior"
+    ).scalar()
+    if lam is not None:
+        headline_lam = lam
+
     cv: CvResult | None = None
-    penalty = registry.get("mbb.impact.ridge_lambda").scalar() if lam is None else lam
     if choose_lambda_by_cv:
-        design = build_design(lineups, min_possessions=min_poss)
         cv = cv_lambda(
             design,
             registry.get("mbb.impact.lambda_grid").numbers(),
             n_folds=int(registry.get("mbb.impact.cv_folds").scalar()),
             rng=np.random.default_rng(seed),
+            offset=offset,
         )
-        penalty = cv.best
-    rapm, design, fit = fit_rapm(
-        lineups, season=season, lam=penalty, min_possessions=min_poss, cv=cv
-    )
+        headline_lam = cv.best
+    if offset is None and headline_lam == baseline_lam and cv is None:
+        rapm, fit = baseline, baseline_fit
+    else:
+        rapm, design, fit = fit_rapm(
+            lineups,
+            season=season,
+            lam=headline_lam,
+            min_possessions=min_poss,
+            cv=cv,
+            prior=predictions,
+        )
 
     ratings = team_ratings(lineups, design, fit).with_columns(
         (pl.col("lineup_off_poss") + pl.col("lineup_def_poss")).alias("lineup_poss")
@@ -171,6 +232,12 @@ def assemble_season(
     return SeasonModel(
         season=season,
         rapm=rapm,
+        baseline=baseline,
+        prior=prior if offset is not None else None,
+        design=design,
+        prior_offset=offset,
+        lineups=lineups,
+        box_predictions=box_predictions,
         teams=teams,
         games=games,
         exponent=exponent,

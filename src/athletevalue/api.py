@@ -8,10 +8,10 @@ from athletevalue.assumptions.registry import AssumptionRegistry, default_regist
 from athletevalue.identity.resolve import resolve_team
 from athletevalue.market.registry import load_deal_registry
 from athletevalue.sources.cache import ArtifactCache
-from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset
+from athletevalue.sources.sportsdataverse import LATEST_SEASON, SdvClient, SdvDataset
 from athletevalue.sources.torvik import TorvikClient
 from athletevalue.sports.mbb.economics_loaders import load_economics_frames
-from athletevalue.sports.mbb.loaders import load_season_frames
+from athletevalue.sports.mbb.loaders import load_box_prior, load_season_frames
 from athletevalue.valuation.economy import EconomicsModel, assemble_economics
 from athletevalue.valuation.player import team_table
 from athletevalue.valuation.player import value_player as compose_player
@@ -28,12 +28,32 @@ def fit_season(
     registry: AssumptionRegistry | None = None,
     lam: float | None = None,
     choose_lambda_by_cv: bool = False,
+    prior: bool | None = None,
+    last_available_season: int | None = None,
 ) -> SeasonModel:
-    """Download (or reuse) one season's inputs and fit RAPM, team ratings and win models."""
+    """Download (or reuse) one season's inputs and fit ratings, team ratings and win models.
+
+    *prior* defaults to the registry's ``mbb.prior.use_box_prior``. The prior is fit on
+    other seasons up to *last_available_season* (default: *season* or the latest season
+    with data, whichever is later).
+    """
     cache = cache or ArtifactCache.default()
     registry = registry or default_registry()
     frames = load_season_frames(season, cache)
-    return assemble_season(frames, registry, lam=lam, choose_lambda_by_cv=choose_lambda_by_cv)
+    use_prior = registry.get("mbb.prior.use_box_prior").flag() if prior is None else prior
+    box_prior = (
+        load_box_prior(
+            season,
+            cache,
+            registry,
+            last_season=max(season, last_available_season or LATEST_SEASON),
+        )
+        if use_prior
+        else None
+    )
+    return assemble_season(
+        frames, registry, lam=lam, choose_lambda_by_cv=choose_lambda_by_cv, prior=box_prior
+    )
 
 
 def validate(

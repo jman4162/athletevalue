@@ -9,10 +9,12 @@ from scipy.stats import spearmanr
 
 from athletevalue.economics.revenue import RevenueModel
 from athletevalue.economics.tournament import BidModel
+from athletevalue.frames.box import player_box_totals
+from athletevalue.impact.prior import fit_box_prior
 from athletevalue.schemas.evidence import EvidenceStatus
 from athletevalue.valuation.economy import EconomicsModel
 from athletevalue.valuation.player import team_table, value_player
-from athletevalue.valuation.season import assemble_season
+from athletevalue.valuation.season import assemble_season, baseline_rapm
 from athletevalue.valuation.team import team_draws
 from athletevalue.valuation.validate import validate_season
 from tests.fixtures.raw_season import make_raw_season
@@ -20,8 +22,20 @@ from tests.fixtures.raw_season import make_raw_season
 
 @pytest.fixture(scope="module")
 def season(registry):
+    training_frames, _ = make_raw_season(seed=1, season=2025)
+    prior = fit_box_prior(
+        [
+            (
+                2025,
+                baseline_rapm(training_frames, registry).table,
+                player_box_totals(training_frames.player_box),
+            )
+        ],
+        pseudo_possessions=registry.get("mbb.prior.rate_pseudo_possessions").scalar(),
+        ridge=registry.get("mbb.prior.box_ridge").scalar(),
+    )
     frames, truth = make_raw_season()
-    return assemble_season(frames, registry), truth
+    return assemble_season(frames, registry, prior=prior), truth
 
 
 @pytest.fixture(scope="module")
@@ -76,6 +90,8 @@ def test_validation_gates_run(season, registry):
     names = {g.name: g for g in report.gates}
     assert names["spearman_team_net_vs_torvik"].value == pytest.approx(1.0)
     assert names["torvik_teams_matched"].passed is False  # 8 teams is below the 250 minimum
+    assert "prior_cv_error_ratio" in names
+    assert model.rapm.prior == "box" and model.baseline.prior == "none"
     assert any("Pythagorean" in n for n in report.notes)
 
 

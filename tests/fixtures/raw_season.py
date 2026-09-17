@@ -99,8 +99,32 @@ def make_raw_season(seed: int = 0, season: int = 2026) -> tuple[SeasonFrames, di
                 "away_score": score[away],
             }
         )
+    box_rows = []
+    for (athlete, team), (poss, pts) in _box_counts(poss_rows).items():
+        rating = off[athlete]
+        box_rows.append(
+            {
+                "player_id": athlete,
+                "team": team,
+                "o_poss": poss,
+                "pts": pts,
+                "fga": pts * 0.8,
+                "tpa": poss * 0.1,
+                "fta": poss * 0.05,
+                "rima": poss * 0.08,
+                "mida": poss * 0.05,
+                "ast": max(0.0, poss * (0.05 + 0.01 * rating)),
+                "tov": poss * 0.04,
+                "orb": poss * 0.03,
+                "drb": poss * 0.1,
+                "stl": max(0.0, poss * (0.02 + 0.004 * (net[athlete] - rating))),
+                "blk": poss * 0.01,
+                "pf": poss * 0.05,
+            }
+        )
     frames = SeasonFrames(
         season=season,
+        player_box=pl.DataFrame(box_rows),
         possessions=pl.DataFrame(poss_rows, infer_schema_length=None),
         team_ids=pl.DataFrame(
             {"team": [t for t, _ in teams], "conference": [c for _, c in teams], "season": season}
@@ -109,3 +133,17 @@ def make_raw_season(seed: int = 0, season: int = 2026) -> tuple[SeasonFrames, di
         espn_schedule=pl.DataFrame(espn_rows, schema_overrides={"tournament_id": pl.Int32}),
     )
     return frames, net
+
+
+def _box_counts(poss_rows: list[dict[str, object]]) -> dict[tuple[str, str], tuple[float, float]]:
+    """Offensive possessions per player, with each possession's points split among the five."""
+    counts: dict[tuple[str, str], list[float]] = {}
+    for row in poss_rows:
+        side = "home" if row["poss_team"] == row["home"] else "away"
+        team = str(row[side])
+        for slot in range(1, 6):
+            key = (str(row[f"{side}_{slot}_player_id"]), team)
+            entry = counts.setdefault(key, [0.0, 0.0])
+            entry[0] += 1
+            entry[1] += float(row["pts"]) / 5  # type: ignore[arg-type]
+    return {key: (value[0], value[1]) for key, value in counts.items()}

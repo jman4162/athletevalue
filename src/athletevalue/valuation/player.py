@@ -22,11 +22,11 @@ from athletevalue.valuation.result import Driver, PlayerValuation
 from athletevalue.valuation.season import SeasonModel
 from athletevalue.valuation.team import (
     ALLOCATION_ASSUMPTIONS,
-    IMPACT_ASSUMPTIONS,
     PROGRAM_ASSUMPTIONS,
     UNIT_ASSUMPTIONS,
     WAR_ASSUMPTIONS,
     TeamDraws,
+    impact_assumptions,
     team_draws,
 )
 from athletevalue.versions import MODEL_VERSION
@@ -51,7 +51,9 @@ def value_player(
     athlete, team_name = str(row["athlete_id"]), str(row["team"])
     draws = team_draws(season, economics, registry, team_name, seed=seed)
     level = registry.get("mbb.wins.interval_level").scalar()
-    impact_status = EvidenceStatus.weakest(*(registry.get(i).status for i in IMPACT_ASSUMPTIONS))
+    impact_ids = impact_assumptions(season)
+    impact_status = EvidenceStatus.weakest(*(registry.get(i).status for i in impact_ids))
+    suffix = "_box_prior" if season.rapm.prior == "box" else ""
     war_status = EvidenceStatus.weakest(
         impact_status, *(registry.get(i).status for i in WAR_ASSUMPTIONS)
     )
@@ -67,7 +69,7 @@ def value_player(
         float(row["se_net"]),
         unit=RATING,
         status=impact_status,
-        method="rapm_net",
+        method=f"rapm_net{suffix}",
         level=level,
     )
     offense = Estimate.normal(
@@ -75,7 +77,7 @@ def value_player(
         float(row["se_off"]),
         unit=RATING,
         status=impact_status,
-        method="rapm_offense",
+        method=f"rapm_offense{suffix}",
         level=level,
     )
     defense = Estimate.normal(
@@ -83,7 +85,7 @@ def value_player(
         float(row["se_def"]),
         unit=RATING,
         status=impact_status,
-        method="rapm_defense",
+        method=f"rapm_defense{suffix}",
         level=level,
     )
     war = summarize(
@@ -100,7 +102,7 @@ def value_player(
         status=war_status,
     )
 
-    assumptions = [*IMPACT_ASSUMPTIONS, *WAR_ASSUMPTIONS]
+    assumptions = [*impact_ids, *WAR_ASSUMPTIONS]
     program_value: Estimate | None = None
     components: dict[str, Estimate] = {}
     program_draws = None
@@ -265,6 +267,17 @@ def _drivers(
     drivers.append(
         Driver(sign=sign, text=f"on-court impact ranks {rank} of {table.height} rated players")
     )
+    if season.rapm.prior == "box":
+        prior_net = float(row["prior_net"])  # type: ignore[arg-type]
+        drivers.append(
+            Driver(
+                sign="~",
+                text=(
+                    f"box-score prior {prior_net:+.1f} per 100; his possessions moved the "
+                    f"rating {net - prior_net:+.1f}"
+                ),
+            )
+        )
 
     share = float(draws.roster.filter(pl.col("athlete_id") == athlete)["possession_share"][0])
     team_median = float(draws.roster["possession_share"].median())  # type: ignore[arg-type]

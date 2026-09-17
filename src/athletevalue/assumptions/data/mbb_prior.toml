@@ -1,0 +1,63 @@
+# Box-score prior for RAPM.
+
+["mbb.prior.use_box_prior"]
+description = "Shrink player ratings toward a box-score prediction instead of toward zero."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """In cross-validation that holds out whole games and computes the team
+adjustment from training games only, held-out error falls from 5,186.6 to 5,171.9 in
+2026 and from 5,055.5 to 5,041.4 in 2025. The `prior_cv_error_ratio` gate rechecks
+this for every season validated."""
+
+["mbb.prior.training_seasons"]
+description = "Nearest other seasons used to fit the box model; ties go to the earlier season."
+unit = "count"
+basis = "modelling_choice"
+value = 4.0
+rationale = """Four seasons give about 13,000 player-seasons, enough for 14 coefficients,
+while staying within one rules and pace era. Only other seasons are used so the prior
+never sees the season it is applied to."""
+
+["mbb.prior.rate_pseudo_possessions"]
+description = "League-average possessions added to each player's box rates before prediction."
+unit = "possessions"
+basis = "modelling_choice"
+value = 100.0
+rationale = """Matches the RAPM pooling threshold. A player with 30 possessions keeps about a
+quarter of his raw rate; a starter with 2,000 keeps 95%."""
+
+["mbb.prior.box_ridge"]
+description = "Ridge penalty on standardized box-model coefficients."
+unit = "dimensionless"
+basis = "modelling_choice"
+value = 1.0
+rationale = """Negligible against ~13,000 possession-weighted rows; it only stabilizes the
+solve when shot-location rates are collinear."""
+
+["mbb.prior.max_cv_error_ratio"]
+description = "Largest allowed ratio of held-out error with the prior to error without it."
+unit = "ratio"
+basis = "modelling_choice"
+value = 1.0
+rationale = "A prior that raises held-out error should not be used; this gate reports it."
+
+["mbb.impact.ridge_lambda_with_prior"]
+description = "Ridge penalty when shrinking toward the team-adjusted box-score prior."
+unit = "dimensionless"
+basis = "modelling_choice"
+value = 3000.0
+rationale = """Leak-free grouped cross-validation, lambda 1000/3000/10000/30000:
+2026 held-out error 5,177.6 / 5,171.9 / 5,171.9 / 5,172.4; 2025 5,048.3 / 5,041.4 /
+5,040.6 / 5,040.8. The curve is flat from 3000 up; the smallest value on the flat part
+keeps the most weight on each player's own possessions."""
+
+["mbb.prior.team_adjustment"]
+description = "Shift box predictions so each team's players sum to its no-prior team rating."
+unit = "flag"
+basis = "modelling_choice"
+value = true
+rationale = """Box rates ignore opponent strength. Without the adjustment the 2026 team
+ratings match Torvik at Spearman 0.925 (0.963 with no prior) and the intercept moves to
+104.5; with it, 0.963 and 106.5. Leak-free cross-validation error is about the same
+either way (5,171.9 adjusted vs 5,173.3 unadjusted at lambda 3000)."""

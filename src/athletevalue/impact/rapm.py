@@ -10,6 +10,7 @@ import polars as pl
 from athletevalue.frames.possessions import LineupData
 from athletevalue.impact.cv import CvResult
 from athletevalue.impact.design import Design, build_design
+from athletevalue.impact.prior import prior_offset
 from athletevalue.impact.ridge import RidgeError, RidgeFit, fit_ridge
 
 
@@ -32,6 +33,8 @@ class RapmResult:
     n_rows: int
     n_possessions: int
     cv: CvResult | None
+    prior: str
+    """``none`` or ``box``."""
 
 
 def fit_rapm(
@@ -41,8 +44,11 @@ def fit_rapm(
     lam: float,
     min_possessions: float,
     cv: CvResult | None = None,
+    prior: pl.DataFrame | None = None,
 ) -> tuple[RapmResult, Design, RidgeFit]:
+    """Fit RAPM. *prior* (athlete_id, prior_off, prior_def) sets the shrinkage target."""
     design = build_design(lineups, min_possessions=min_possessions)
+    offset = None if prior is None else prior_offset(design, prior)
     p = design.n_players
     pairs = np.column_stack(
         [
@@ -50,7 +56,7 @@ def fit_rapm(
             np.append(np.arange(p, 2 * p), design.pool_def_col),
         ]
     ).astype(np.int64)
-    fit = fit_ridge(design.X, design.y, design.w, lam, design.penalized, pairs=pairs)
+    fit = fit_ridge(design.X, design.y, design.w, lam, design.penalized, pairs=pairs, offset=offset)
     if fit.variance is None or fit.pair_covariance is None or fit.sigma2 is None or fit.df is None:
         raise RidgeError("standard errors were requested but not computed")
     if lam > 0 and not fit.df < design.n_columns - 1:
@@ -69,6 +75,7 @@ def fit_rapm(
             "se_off": np.sqrt(var[:p]),
             "se_def": np.sqrt(var[p : 2 * p]),
             "se_net": np.sqrt(var[:p] + var[p : 2 * p] + 2 * pair_cov[:p]),
+            "prior_net": np.zeros(p) if offset is None else offset[:p] + offset[p : 2 * p],
         }
     )
     pool_off, pool_def = beta[design.pool_off_col], beta[design.pool_def_col]
@@ -86,6 +93,7 @@ def fit_rapm(
             pl.col("se_off").fill_null(pool_se[0]),
             pl.col("se_def").fill_null(pool_se[1]),
             pl.col("se_net").fill_null(pool_se[2]),
+            pl.col("prior_net").fill_null(0.0),
         )
         .with_columns((pl.col("orapm") + pl.col("drapm")).alias("net"))
         .select(
@@ -101,6 +109,7 @@ def fit_rapm(
             "se_off",
             "se_def",
             "se_net",
+            "prior_net",
         )
         .sort("net", descending=True)
     )
@@ -118,5 +127,6 @@ def fit_rapm(
         n_rows=fit.n_rows,
         n_possessions=int(design.w.sum()),
         cv=cv,
+        prior="none" if prior is None else "box",
     )
     return result, design, fit

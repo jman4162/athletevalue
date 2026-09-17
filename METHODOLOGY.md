@@ -1,6 +1,6 @@
 # Methodology
 
-This document describes model `mbb-v0.1.0`. Every constant named here is an entry
+This document describes model `mbb-v0.2.0`. Every constant named here is an entry
 in the assumption registry (`athletevalue assumptions` lists them with their basis,
 citation or rationale). Figures quoted are from the 2025 and 2026 season fits.
 
@@ -60,9 +60,9 @@ that holds out whole games picks the same value for 2026:
 `σ̂² = Σ poss_r r_r² / (n_rows − df)` with `df = n_cols − λ Σ_penalized (A⁻¹)_kk`.
 Net-rating SEs include the offense-defense covariance. The fit refuses to report a
 result if `df` is not below the column count, which catches a penalty that was
-silently dropped. A starter's net-rating SE is about 4 points per 100: with
-λ = 1000 the prior SD is `sqrt(13,300 / 1000) ≈ 3.6` per component, and one
-season of college possessions does not move far from it.
+silently dropped. Without a box prior a starter's net-rating SE is about 4 points
+per 100: with λ = 1000 the prior SD is `sqrt(13,300 / 1000) ≈ 3.6` per component,
+and one season of college possessions does not move far from it.
 
 **Team ratings.** A team's adjusted offense is the possession-weighted average of
 the offensive coefficients it put on the floor; defense likewise. Their sum is the
@@ -70,10 +70,60 @@ team's adjusted net rating relative to an average D1 lineup.
 
 **Checks.** See the validation table in the README. Two findings from them:
 
-- The pooled low-minute players rate −12.1 (2026) and −9.6 (2025) per 100, far
+- The pooled low-minute players rate −12.1 (2026) and −9.3 (2025) per 100, far
   below the −2.0 replacement convention borrowed from NBA Box Plus/Minus.
-- The home-court coefficient is 2.9-3.2 per side, a net home edge of about 6 points
+- The home-court coefficient is 2.6-3.2 per side, a net home edge of about 6 points
   per 100 possessions, or 4 points in a 70-possession game.
+
+## 2b. Box-score prior
+
+Shrinking every player toward zero treats a high-scoring starter and a walk-on the
+same until possessions say otherwise. Since v0.2 the ridge instead shrinks toward
+what a player's box score predicts.
+
+**Box model.** For each player-season, 13 counting stats (points, field-goal,
+three-point, free-throw, rim and mid-range attempts, assists, turnovers, offensive
+and defensive rebounds, steals, blocks, fouls) become rates per 100 offensive
+possessions after adding 100 possessions at the league-average rate. A
+possession-weighted ridge regression on standardized rates predicts no-prior
+offensive and defensive RAPM, separately. It is fitted on the four nearest other
+seasons (for 2026: 2022-2025), never on the season it is applied to. In-sample R²
+is 0.33 for offense and 0.12 for defense.
+
+**Team adjustment.** Box rates ignore opponents, so a low-major star's rates
+overstate him. As in Box Plus/Minus, each team's offensive and defensive
+predictions are shifted by a constant so their possession-weighted sum equals the
+team's rating from the no-prior fit. Without this step 2026 team ratings match
+Torvik at Spearman 0.925; with it, 0.971.
+
+**Fit.** The adjusted predictions are the prior mean `b0` in the ridge objective
+above, with λ = 3000. Cross-validation that holds out whole games, and recomputes the
+team adjustment from training games only, gives:
+
+| λ with prior | 1000 | 3000 | 10000 | 30000 |
+| --- | --- | --- | --- | --- |
+| 2026 held-out MSE | 5,177.6 | 5,171.9 | 5,171.9 | 5,172.4 |
+| 2025 held-out MSE | 5,048.3 | 5,041.4 | 5,040.6 | 5,040.8 |
+
+against 5,186.6 (2026) and 5,055.5 (2025) with no prior at λ = 1000. An earlier
+version computed the team adjustment from the full season inside cross-validation;
+held-out games then leaked into the prior and error kept falling as λ grew without
+bound. The leak-free version above is what the `prior_cv_error_ratio` gate runs.
+
+**Effects.**
+
+- Correlation between a returning player's 2025 rating and his 2026 no-prior rating
+  rises from 0.40 to 0.52 (1,735 players; 2025 prior trained on 2021-2024).
+- The no-prior fit compresses team strength: regressing its team ratings on Torvik
+  AdjEM gives a slope of 0.81 (2026). With the prior the slope is 0.96 and RMSE
+  falls from 3.8 to 3.2 points per 100.
+- A starter's posterior SD falls from about 4.0 to about 2.6 points per 100. That
+  figure treats the prior mean as known; box-model coefficient uncertainty, small
+  with ~13,000 training rows, is not added.
+
+The no-prior fit is still computed and is what the reference-RAPM gate compares,
+because the published reference also shrinks toward zero. `athletevalue fit
+--no-prior` reproduces it.
 
 ## 3. Wins above replacement
 
@@ -86,7 +136,7 @@ Win probability in each game is
     P(win) = Φ( (net_team − net_opp + 2h·v) · poss_game / 100 / σ_margin )
 
 `σ_margin` is fitted each season as the root-mean-square gap between actual and
-expected margins: 11.7 points in 2026 and 12.2 in 2025. WAR is the sum over the
+expected margins: 11.5 points in 2026 and 12.1 in 2025 with the box prior. WAR is the sum over the
 team's games of `P(win | net_team) − P(win | net_team − Δ)`, computed for 4,000
 draws of the player's net rating from its posterior. The headline figure is the
 median of those draws.

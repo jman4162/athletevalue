@@ -9,11 +9,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import polars as pl
 from scipy.stats import spearmanr
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.identity.names import normalize_name
+from athletevalue.impact.cv import cv_prior_comparison, game_folds
+from athletevalue.impact.prior import weighted_r2
 from athletevalue.valuation.season import SeasonModel
 
 
@@ -49,6 +52,8 @@ def validate_season(
     *,
     reference_rapm: pl.DataFrame | None = None,
     torvik: pl.DataFrame | None = None,
+    check_prior: bool = True,
+    seed: int = 0,
 ) -> ValidationReport:
     rapm = model.rapm
     gates: list[Gate] = []
@@ -63,7 +68,8 @@ def validate_season(
 
     if reference_rapm is not None:
         threshold = registry.get("mbb.impact.reference_min_possessions").scalar()
-        joined = rapm.table.join(
+        # The reference shrinks toward zero, so it is compared with the no-prior fit.
+        joined = model.baseline.table.join(
             reference_rapm.select(
                 pl.col("player_id").cast(pl.Utf8).alias("athlete_id"),
                 pl.col("rapm_net").alias("reference_net"),
@@ -111,6 +117,11 @@ def validate_season(
             )
         )
 
+    if check_prior and model.prior is not None and model.prior_offset is not None:
+        gate, note = _prior_checks(model, registry, seed=seed)
+        gates.append(gate)
+        notes.append(note)
+
     ref_low, ref_high = registry.get("mbb.wins.pythag_exponent_reference").interval()
     notes.append(
         f"Pythagorean exponent fitted on raw efficiencies: {model.exponent:.2f}. Published "
@@ -124,3 +135,64 @@ def validate_season(
     )
     notes.append(f"Game margin SD around fitted ratings: {model.margin_sd:.1f} points.")
     return ValidationReport(season=model.season, gates=tuple(gates), notes=tuple(notes))
+
+
+def _prior_checks(
+    model: SeasonModel, registry: AssumptionRegistry, *, seed: int
+) -> tuple[Gate, str]:
+    assert model.prior is not None and model.prior_offset is not None
+    design = model.design
+    folds = game_folds(
+        design.groups,
+        int(registry.get("mbb.impact.cv_folds").scalar()),
+        np.random.default_rng(seed),
+    )
+    lam_none = registry.get("mbb.impact.ridge_lambda").scalar()
+    assert model.box_predictions is not None
+    without, with_prior = cv_prior_comparison(
+        design,
+        model.lineups,
+        model.box_predictions,
+        folds,
+        lam_without=lam_none,
+        lam_with=model.rapm.lam,
+        adjust_to_team=registry.get("mbb.prior.team_adjustment").flag(),
+    )
+    gate = Gate(
+        "prior_cv_error_ratio",
+        with_prior / without,
+        None,
+        registry.get("mbb.prior.max_cv_error_ratio").scalar(),
+        f"held-out MSE {with_prior:,.1f} with prior (lambda {model.rapm.lam:g}) "
+        f"vs {without:,.1f} without (lambda {lam_none:g})",
+    )
+
+    threshold = registry.get("mbb.impact.reference_min_possessions").scalar()
+    p = design.n_players
+    prior = pl.DataFrame(
+        {
+            "athlete_id": list(design.athlete_ids),
+            "prior_off": model.prior_offset[:p],
+            "prior_def": model.prior_offset[p : 2 * p],
+        }
+    )
+    joined = model.baseline.table.join(prior, on="athlete_id").filter(
+        pl.col("off_poss") >= threshold
+    )
+    r2_off = weighted_r2(
+        joined["orapm"].to_numpy(),
+        joined["prior_off"].to_numpy(),
+        joined["off_poss"].cast(pl.Float64).to_numpy(),
+    )
+    r2_def = weighted_r2(
+        joined["drapm"].to_numpy(),
+        joined["prior_def"].to_numpy(),
+        joined["def_poss"].cast(pl.Float64).to_numpy(),
+    )
+    seasons = ", ".join(str(s) for s in model.prior.train_seasons)
+    note = (
+        f"Box prior fitted on {seasons}, after the team adjustment from this season's games, "
+        f"explains {r2_off:.0%} of offensive and {r2_def:.0%} of defensive no-prior ratings "
+        f"({joined.height} players with >= {threshold:.0f} possessions; in-season, so optimistic)."
+    )
+    return gate, note

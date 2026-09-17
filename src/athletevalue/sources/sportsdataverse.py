@@ -18,6 +18,9 @@ RELEASE_BASE = "https://github.com/sportsdataverse/sportsdataverse-data/releases
 FIRST_POSSESSION_SEASON = 2011
 """The source excludes 2010 because its substitution records are too sparse."""
 
+LATEST_SEASON = 2026
+"""Most recent completed season with published assets, as of this release."""
+
 
 class SeasonUnavailableError(LookupError):
     """Raised when a season has no published asset."""
