@@ -25,12 +25,12 @@ def populate_cache(root: Path, seasons: tuple[int, ...] = SEASONS) -> Path:
     """Write every SportsDataverse file the pipeline reads for *seasons* under *root*."""
     manifest: dict[str, dict[str, object]] = {}
     client = SdvClient.__new__(SdvClient)  # only url() is used, which needs no cache
-    person_ids: dict[str, int] = {}
+    person_ids: dict[str, str] = {}
     for offset, season in enumerate(seasons):
         frames, _ = make_raw_season(seed=offset, season=season)
         reference = baseline_rapm(frames, default_registry()).table.filter(~pl.col("pooled"))
         for athlete in reference["athlete_id"].to_list():
-            person_ids.setdefault(athlete, 10_000 + len(person_ids))
+            person_ids.setdefault(athlete, f"p{10_000 + len(person_ids)}")
         tables = {
             SdvDataset.POSSESSIONS: frames.possessions,
             SdvDataset.TEAM_IDS: frames.team_ids,
@@ -40,7 +40,7 @@ def populate_cache(root: Path, seasons: tuple[int, ...] = SEASONS) -> Path:
             SdvDataset.REFERENCE_RAPM: reference.select(
                 pl.col("athlete_id").alias("player_id"),
                 pl.col("athlete_id")
-                .replace_strict(person_ids, return_dtype=pl.Int64)
+                .replace_strict(person_ids, return_dtype=pl.Utf8)
                 .alias("person_id"),
                 pl.col("net").alias("rapm_net"),
                 "off_poss",

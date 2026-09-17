@@ -32,8 +32,13 @@ from athletevalue.market.model import InsufficientLabelsError
 from athletevalue.market.registry import load_deal_registry
 from athletevalue.runtime import numerical_threads
 from athletevalue.schemas.registry import DealRecord
-from athletevalue.sources.cache import ArtifactCache, ArtifactMismatchError, SourceUnavailableError
-from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset
+from athletevalue.sources.cache import (
+    ArtifactCache,
+    ArtifactMismatchError,
+    OfflineError,
+    SourceUnavailableError,
+)
+from athletevalue.sources.sportsdataverse import SdvClient, SdvDataset, SeasonUnavailableError
 from athletevalue.sources.torvik import TorvikClient
 from athletevalue.sports.mbb.economics_loaders import load_economics_frames
 from athletevalue.sports.mbb.loaders import load_box_prior, load_season_frames
@@ -45,7 +50,7 @@ from athletevalue.valuation.player import value_player as compose_player
 from athletevalue.valuation.result import PlayerValuation
 from athletevalue.valuation.season import SeasonModel, assemble_season
 from athletevalue.valuation.team import team_draws
-from athletevalue.valuation.validate import ValidationReport, validate_season
+from athletevalue.valuation.validate import ValidationReport, extended_gates, validate_season
 from athletevalue.versions import MODEL_VERSION
 
 
@@ -178,8 +183,20 @@ class Session:
         self._economics.put(key, model)
         return model
 
-    def validate(self, model: SeasonModel, *, use_torvik: bool = True) -> ValidationReport:
-        """Compare a fitted season with the SportsDataverse RAPM and Torvik team ratings."""
+    def validate(
+        self,
+        model: SeasonModel,
+        *,
+        use_torvik: bool = True,
+        extended: bool = False,
+        economics: bool = True,
+    ) -> ValidationReport:
+        """Compare a fitted season with the SportsDataverse RAPM and Torvik team ratings.
+
+        *extended* adds the gates above the ratings (``validate.extended_gates``): it fits
+        the previous season for the returning-player check and, with *economics*, the
+        revenue and bid models through this season.
+        """
         reference = SdvClient(self.cache).frame(SdvDataset.REFERENCE_RAPM, model.season)
         torvik = None
         notes: tuple[str, ...] = ()
@@ -193,9 +210,21 @@ class Session:
                 notes = (f"Torvik comparison skipped: {error}",)
         with numerical_threads():
             report = validate_season(model, self.registry, reference_rapm=reference, torvik=torvik)
-        return ValidationReport(
-            season=report.season, gates=report.gates, notes=(*report.notes, *notes)
-        )
+        gates = report.gates
+        if extended:
+            previous = None
+            try:
+                previous = self.fit_season(model.season - 1)
+            except (SeasonUnavailableError, OfflineError) as error:
+                notes = (*notes, f"previous season unavailable: {error}")
+            econ = self.fit_economics(model.season) if economics else None
+            with numerical_threads():
+                more_gates, more_notes = extended_gates(
+                    model, self.registry, previous=previous, economics=econ
+                )
+            gates = (*gates, *more_gates)
+            notes = (*notes, *more_notes)
+        return ValidationReport(season=report.season, gates=gates, notes=(*report.notes, *notes))
 
     def fit_market(
         self,
@@ -379,9 +408,13 @@ def validate(
     cache: ArtifactCache | None = None,
     registry: AssumptionRegistry | None = None,
     use_torvik: bool = True,
+    extended: bool = False,
+    economics: bool = True,
 ) -> ValidationReport:
     """See ``Session.validate``."""
-    return _session(cache, registry).validate(model, use_torvik=use_torvik)
+    return _session(cache, registry).validate(
+        model, use_torvik=use_torvik, extended=extended, economics=economics
+    )
 
 
 def fit_economics(

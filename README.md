@@ -6,6 +6,7 @@
 [![Code license: MIT](https://img.shields.io/badge/code%20license-MIT-blue.svg)](https://github.com/jman4162/athletevalue/blob/main/LICENSE)
 [![Data license: CC BY 4.0](https://img.shields.io/badge/data%20license-CC%20BY%204.0-lightgrey.svg)](https://github.com/jman4162/athletevalue/blob/main/LICENSE-DATA)
 [![Typed](https://img.shields.io/badge/typing-mypy%20strict-informational.svg)](https://mypy-lang.org/)
+[![Docs](https://img.shields.io/badge/docs-methodology%20%26%20validation-informational.svg)](https://jman4162.github.io/athletevalue/)
 
 What an NCAA men's basketball player's wins are worth to his school, and what a
 published roster budget would pay him. A Python package and CLI that rates players
@@ -44,6 +45,8 @@ athletevalue value "Player Name" --season 2026 --team "School"
 
 The example below is a synthetic player on a synthetic season, produced by
 `scripts/readme_example.py`; the README does not name real athletes.
+
+![A synthetic roster: annual program value against allocated price, with team medians](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/example_roster.svg)
 
 ```text
 A. Guard · State U (Example Conf) · 2025-26 · starter
@@ -134,8 +137,25 @@ against Bart Torvik's team ratings, which are not (an external check).
 | Home-court advantage per side, per 100 | 2.93 | 2.61 | 1–4 |
 | Residual variance | 13,315 | 13,330 | 11,000–15,000 |
 
+![Team net rating against Torvik, 2025-26, without and with the box-score prior](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/team_ratings_vs_torvik.svg)
+
 `athletevalue validate --season 2026` reproduces this table. Torvik's site refuses
 some cloud address ranges; when that happens the Torvik rows are skipped and reported.
+
+The layers built on the ratings have no published reference, so
+`athletevalue validate --season 2026 --extended` checks them against the data's own
+outcomes:
+
+| Gate | 2025 | 2026 | Threshold |
+| --- | --- | --- | --- |
+| Game-margin SD around fitted ratings, D1 games, points | 11.15 | 10.87 | 10–12.5 |
+| Correlation of summed player WAR with team wins | 0.79 | 0.80 | ≥ 0.70 |
+| Returning players: correlation gain from the prior | +0.122 | +0.124 | ≥ 0 |
+| Share of revenue bootstrap draws with a win effect ≤ 0 | 0.00 | 0.00 | ≤ 0.10 |
+| Largest gap between predicted and observed bid rate, by decile | 0.021 | 0.025 | ≤ 0.05 |
+
+Every number in these tables comes from `docs/_static/data/snapshot.json`, built by
+`scripts/build_snapshot.py`; a test fails if the README and the snapshot disagree.
 
 **What the box-score prior buys.** Held-out squared error per 100 possessions, games
 held out, box totals and the team adjustment rebuilt from training games:
@@ -146,11 +166,13 @@ held out, box totals and the team adjustment rebuilt from training games:
 | Zero box information plus the team adjustment (λ = 3000) | 5,050.6 | 5,182.1 |
 | Box model plus the team adjustment (λ = 3000) | 5,046.8 | 5,177.6 |
 
+![Held-out error by ridge penalty for no prior, the team adjustment alone, and the box model](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/cv_error_by_penalty.svg)
+
 Most of the gain is the team adjustment restoring the scale of team strength; the box
 model itself adds about 0.1%. On 1,735 players who appear in both 2025 and 2026, the
 2025 rating with the prior (trained on 2021–2024) correlates 0.52 with the 2026
-no-prior rating, against 0.40 without it. `scripts/returning_players.py 2025 2026`
-reproduces that check.
+no-prior rating, against 0.40 without it. The extended validation runs that check as
+a gate.
 
 ## Data and licensing
 
@@ -181,23 +203,35 @@ import-linter contract that stops fitting code from importing it.
   equal to expense and are excluded from the fit but kept in each school's revenue
   base, so for most programs the dollar figure is an elasticity from revenue-tracking
   schools applied to a budget number.
+
+  ![Bootstrap distribution of revenue per win](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/revenue_per_win.svg)
 - **The replacement level is a choice.** The NBA convention is −2.0 per 100. In these
-  data the pooled low-minute players rate about −12, and the 9th–12th men on each
-  team about −1.2. The default uses the bench median; the summary shows all three.
+  data the pooled low-minute players rate about −12, and the players ranked 9th–12th
+  on each team about −1.2. The default uses the bench median; the summary shows all
+  three.
+
+  ![Starters' WAR under the three replacement definitions](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/war_by_replacement.svg)
 - **Market value is an allocation for 2025-26 only.** It spreads reported average
   roster budgets by role and rating and sums to the budget in every draw. Every
   conference outside the report's named top and middle tiers gets the bottom tier,
   including some programs whose real budgets are far higher.
 - **Ratings are noisy and their intervals condition on the prior.** A starter's net
   rating has a posterior SD near 2.6 points per 100 with the prior and near 4 without.
-  The prior mean is treated as known.
-- **Players are rated within a season.** Cross-season linkage exists only in the
-  returning-player script.
-- **Results reproduce to about 1e-15 relative, not bitwise**, because the dense
-  Cholesky solve is multithreaded; ranks on near-ties can differ between runs.
+  The prior mean is treated as known. On synthetic seasons with known ratings, the 80%
+  intervals without a prior cover 93% of true values: conservative, not overconfident.
+
+  ![Posterior SD of net rating by possessions played](https://raw.githubusercontent.com/jman4162/athletevalue/main/docs/_static/rating_precision.svg)
+- **Players are rated within a season.** A `person_id` links the same player across
+  seasons for validation; ratings do not yet borrow strength from earlier seasons.
+- **Results agree to about 1e-15 relative between runs**, because BLAS is
+  multithreaded. `ATHLETEVALUE_DETERMINISTIC=1` makes repeats on one machine
+  bit-identical. Upstream files are pinned by SHA-256, so a re-cut release is detected
+  rather than silently used.
 
 [METHODOLOGY.md](https://github.com/jman4162/athletevalue/blob/main/METHODOLOGY.md)
-gives the equations, fitted values and caveats for each layer.
+gives the equations, fitted values and caveats for each layer. The
+[documentation site](https://jman4162.github.io/athletevalue/) renders it with the
+full validation report, every assumption with its source, and the API reference.
 
 ## Roadmap
 

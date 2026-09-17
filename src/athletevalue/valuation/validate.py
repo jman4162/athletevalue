@@ -17,6 +17,13 @@ from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.identity.names import normalize_name
 from athletevalue.impact.cv import cv_prior_comparison, game_folds
 from athletevalue.impact.prior import weighted_r2
+from athletevalue.valuation.checks import (
+    bid_calibration,
+    player_war_table,
+    returning_players,
+    team_war_table,
+)
+from athletevalue.valuation.economy import EconomicsModel
 from athletevalue.valuation.season import SeasonModel
 
 
@@ -201,3 +208,96 @@ def _prior_checks(
         "solved to match team ratings, so it is not scored here."
     )
     return gate, note
+
+
+def extended_gates(
+    model: SeasonModel,
+    registry: AssumptionRegistry,
+    *,
+    previous: SeasonModel | None = None,
+    economics: EconomicsModel | None = None,
+) -> tuple[tuple[Gate, ...], tuple[str, ...]]:
+    """Gates on the layers above the ratings: wins, returning players, revenue, bids.
+
+    *previous* is the season before *model*, fitted with its default prior; without it
+    the returning-player gate is skipped. Without *economics* the revenue and bid
+    gates are skipped. Each skip is reported as a note.
+    """
+    gates: list[Gate] = []
+    notes: list[str] = []
+
+    low, high = registry.get("mbb.wins.margin_sd_band").interval()
+    gates.append(Gate("margin_sd", model.margin_sd, low, high, "points, D1 game margins"))
+
+    players = player_war_table(
+        model, floor_non_d1=registry.get("mbb.wins.non_d1_opponent_floor").flag()
+    )
+    teams = team_war_table(model, players)
+    correlation = float(np.corrcoef(teams["war"], teams["wins"])[0, 1])
+    slope, intercept = np.polyfit(teams["war"].to_numpy(), teams["wins"].to_numpy(), 1)
+    gates.append(
+        Gate(
+            "team_war_vs_wins_correlation",
+            correlation,
+            registry.get("mbb.wins.team_war_min_correlation").scalar(),
+            None,
+            f"{teams.height} teams; wins = {intercept:.1f} + {slope:.2f} x summed linear WAR",
+        )
+    )
+
+    if previous is None:
+        notes.append("Returning-player gate skipped: no earlier season supplied.")
+    else:
+        returning = returning_players(
+            previous,
+            model,
+            min_possessions_earlier=int(
+                registry.get("mbb.prior.returning_min_possessions_earlier").scalar()
+            ),
+            min_possessions_later=int(
+                registry.get("mbb.prior.returning_min_possessions_later").scalar()
+            ),
+        )
+        if returning is None:
+            notes.append("Returning-player gate skipped: person ids are missing for a season.")
+        else:
+            gates.append(
+                Gate(
+                    "returning_player_prior_gain",
+                    returning.gain,
+                    registry.get("mbb.prior.returning_min_gain").scalar(),
+                    None,
+                    f"{returning.n_players} players from {returning.earlier_season}: "
+                    f"correlation with {returning.later_season} no-prior ratings "
+                    f"{returning.corr_with_prior:.3f} with prior vs "
+                    f"{returning.corr_without_prior:.3f} without",
+                )
+            )
+
+    if economics is None:
+        notes.append("Revenue and bid gates skipped: program economics were not loaded.")
+    else:
+        share = float(np.mean(economics.revenue.win_effect_current() <= 0))
+        gates.append(
+            Gate(
+                "revenue_win_effect_nonpositive_share",
+                share,
+                None,
+                registry.get("economics.max_prob_nonpositive_win_effect").scalar(),
+                f"of {economics.revenue.draws.shape[0]} school bootstrap draws",
+            )
+        )
+        calibration = bid_calibration(economics, registry)
+        gaps = (calibration["predicted"] - calibration["observed"]).abs().to_numpy()
+        gap = float(gaps.max())
+        gates.append(
+            Gate(
+                "bid_calibration_max_decile_gap",
+                gap,
+                None,
+                registry.get("economics.bid_calibration_max_gap").scalar(),
+                f"{int(calibration['n'].sum())} team-seasons in {calibration.height} "
+                "deciles, in sample",
+            )
+        )
+    return tuple(gates), tuple(notes)

@@ -21,3 +21,6 @@ FIRST_REVENUE_SHARE_SEASON = 2026
 
 EPS = 1e-12
 """Guard against division by zero in rate calculations."""
+
+DECILES = 10
+"""Bins in a decile table."""

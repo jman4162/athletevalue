@@ -1,4 +1,4 @@
-"""Dollar value of a player's wins to his own program."""
+"""Dollar value of a player's wins to the player's own program."""
 
 from __future__ import annotations
 

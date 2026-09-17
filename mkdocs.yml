@@ -1,9 +1,79 @@
 site_name: athletevalue
+site_description: Open models that separate what a college athlete is worth to a program from what the market pays
+site_url: https://jman4162.github.io/athletevalue/
 repo_url: https://github.com/jman4162/athletevalue
+repo_name: jman4162/athletevalue
+edit_uri: ""
+copyright: Code MIT; curated data CC BY 4.0
+
 theme:
   name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
 nav:
   - Overview: index.md
   - Methodology: methodology.md
+  - Validation: validation.md
+  - Assumptions: assumptions.md
+  - API reference: api.md
   - Contributing: contributing.md
   - Privacy and corrections: privacy.md
+
+# The pages below are generated at build time from the registry and the snapshot, so
+# they cannot drift from the code and the evidence.
+hooks:
+  - docs/hooks/assumptions.py
+  - docs/hooks/validation.py
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      # Repository files are included, not copied, so the site shows the same text
+      # as GitHub. A missing file fails the build.
+      base_path: ["."]
+      check_paths: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_root_heading: true
+            members_order: source
+            docstring_style: sphinx
+
+exclude_docs: |
+  hooks/

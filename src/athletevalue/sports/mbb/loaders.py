@@ -6,6 +6,7 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.frames.box import player_box_totals
+from athletevalue.identity.people import person_map
 from athletevalue.impact.prior import BoxPriorModel, PriorTrainingError, fit_box_prior
 from athletevalue.sources.cache import ArtifactCache, derived_path
 from athletevalue.sources.sportsdataverse import (
@@ -31,8 +32,16 @@ _BASELINE_KEYS = (
 )
 
 
-def load_season_frames(season: int, cache: ArtifactCache) -> SeasonFrames:
+def load_season_frames(season: int, cache: ArtifactCache, *, people: bool = True) -> SeasonFrames:
+    """One season's inputs. With *people*, also the person ids for cross-season links,
+    when SportsDataverse has published them for the season."""
     client = SdvClient(cache)
+    person_ids = None
+    if people:
+        try:
+            person_ids = person_map(client.frame(SdvDataset.REFERENCE_RAPM, season))
+        except SeasonUnavailableError:
+            person_ids = None
     return SeasonFrames(
         season=season,
         possessions=client.frame(SdvDataset.POSSESSIONS, season),
@@ -41,6 +50,7 @@ def load_season_frames(season: int, cache: ArtifactCache) -> SeasonFrames:
         espn_schedule=client.frame(SdvDataset.ESPN_SCHEDULE, season),
         player_box=client.frame(SdvDataset.PLAYER_BOX, season),
         sources=tuple(client.reference(dataset, season) for dataset in _INPUTS),
+        people=person_ids,
     )
 
 
@@ -64,7 +74,7 @@ def cached_baseline(
     cached = cache.read_derived(relative)
     if cached is not None:
         return cached
-    table = baseline_rapm(load_season_frames(season, cache), registry).table
+    table = baseline_rapm(load_season_frames(season, cache, people=False), registry).table
     client = SdvClient(cache)
     sources = [client.artifact(dataset, season) for dataset in _INPUTS]
     cache.write_derived(relative, table, sources=sources, settings=settings)

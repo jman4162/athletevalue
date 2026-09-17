@@ -201,13 +201,19 @@ def validate(
     torvik: bool = typer.Option(
         True, help="Compare team ratings with Bart Torvik's published CSV."
     ),
+    extended: bool = typer.Option(
+        False,
+        "--extended",
+        help="Also check wins, returning players, revenue and bids (fits the previous season).",
+    ),
+    economics: EconomicsOption = True,
     last_season: LastSeasonOption = None,
     assumptions: AssumptionsOption = None,
 ) -> None:
     """Check a season fit against published references."""
     session = _options(ctx).session(assumptions)
     model = session.fit_season(season, last_available_season=last_season)
-    report = session.validate(model, use_torvik=torvik)
+    report = session.validate(model, use_torvik=torvik, extended=extended, economics=economics)
     for gate in report.gates:
         band = f"[{'' if gate.low is None else f'{gate.low:g}'}, {'' if gate.high is None else f'{gate.high:g}'}]"
         typer.echo(
@@ -304,6 +310,10 @@ def market_fit(
     )
     for lam, mae in model.cv_by_lambda:
         typer.echo(f"  penalty {lam:>6g}  leave-one-school-out log MAE {mae:.3f}")
+    typer.echo(
+        f"  nested (penalty chosen without the held-out school) log MAE {model.nested_log_mae:.3f}; "
+        f"tier median {model.baseline_log_mae:.3f}"
+    )
     typer.echo(f"{'USABLE' if usable else 'NOT USED'}: {note}")
     for feature, coef in zip(model.features, model.coef[1:], strict=True):
         typer.echo(f"  {feature:<18} {coef:+.3f} log dollars per SD")

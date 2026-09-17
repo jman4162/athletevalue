@@ -63,3 +63,29 @@ rationale = """Box rates ignore opponent strength. Without the adjustment the 20
 ratings match Torvik at Spearman 0.925 (0.963 with no prior at all); with it, 0.971.
 The adjustment is what restores the scale of team strength that shrinkage toward zero
 compresses: it, not the box scores, accounts for most of the held-out gain."""
+
+["mbb.prior.returning_min_gain"]
+description = """Smallest allowed gain in correlation with next season's no-prior ratings,
+ratings with the prior minus ratings without it, for returning players."""
+unit = "correlation"
+basis = "modelling_choice"
+value = 0.0
+rationale = """The prior exists to predict a player better than that player's own noisy season does. If
+it does not raise the correlation with the next season's independent fit, it is not
+earning its place. 2025 ratings give 0.524 with the prior and 0.400 without."""
+
+["mbb.prior.returning_min_possessions_earlier"]
+description = "Offensive possessions a player needs in the earlier season to enter the returning-player check."
+unit = "possessions"
+basis = "modelling_choice"
+value = 200.0
+rationale = """Low enough to include the part-time players the prior matters most for, high
+enough that the rating is not the pooled coefficient."""
+
+["mbb.prior.returning_min_possessions_later"]
+description = "Offensive possessions a player needs in the later season to enter the returning-player check."
+unit = "possessions"
+basis = "modelling_choice"
+value = 500.0
+rationale = """The later no-prior rating is the target, so it needs enough possessions to be
+more signal than noise; 500 matches the reference-comparison threshold."""

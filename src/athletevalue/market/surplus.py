@@ -1,4 +1,4 @@
-"""Value against price, and where a player sits among his teammates."""
+"""Value against price, and where a player sits among teammates."""
 
 from __future__ import annotations
 

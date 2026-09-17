@@ -222,7 +222,7 @@ def value_player(
             feature_rows = features.filter(pl.col("athlete_id") == athlete)
             if feature_rows.is_empty():
                 raise LookupError(
-                    f"{row['name']} has no market features: his team has no games with "
+                    f"{row['name']} has no market features: the team has no games with "
                     "possession data"
                 )
             x = feature_rows.select(FEATURES).to_numpy()[0]
@@ -284,7 +284,11 @@ def value_player(
 
     return PlayerValuation(
         player=PlayerRef(
-            athlete_id=athlete, name=str(row["name"]), team=team_name, season=season.season
+            athlete_id=athlete,
+            name=str(row["name"]),
+            team=team_name,
+            season=season.season,
+            person_id=row.get("person_id"),
         ),
         conference=draws.conference,
         role=role,
@@ -372,7 +376,7 @@ def _drivers(
             Driver(
                 sign="~",
                 text=(
-                    f"box-score prior {prior_net:+.1f} per 100; his possessions moved the "
+                    f"box-score prior {prior_net:+.1f} per 100; own possessions moved the "
                     f"rating {net - prior_net:+.1f}"
                 ),
             )

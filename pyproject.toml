@@ -34,6 +34,11 @@ dependencies = [
     "typer>=0.12",
 ]
 
+[project.optional-dependencies]
+# Figures for the README and docs. Pinned to one minor release so SVG output is
+# byte-stable; widen it together with regenerating docs/_static.
+viz = ["matplotlib>=3.10,<3.11"]
+
 [project.scripts]
 athletevalue = "athletevalue.cli.main:run"
 
@@ -53,7 +58,7 @@ dev = [
     "respx>=0.21",
     "ruff>=0.14",
 ]
-docs = ["mkdocs-material>=9.5"]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 
 [build-system]
 requires = ["hatchling"]
@@ -69,6 +74,7 @@ only-include = [
     "src",
     "tests",
     "scripts",
+    "docs/_static/data/snapshot.json",
     "CHANGELOG.md",
     "CITATION.cff",
     "CONTRIBUTING.md",
@@ -118,7 +124,7 @@ warn_unreachable = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "fastexcel.*", "threadpoolctl.*"]
+module = ["scipy.*", "fastexcel.*", "threadpoolctl.*", "matplotlib.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -182,6 +188,18 @@ source_modules = [
     "athletevalue.valuation",
 ]
 forbidden_modules = ["athletevalue.sources", "athletevalue.cli", "httpx"]
+
+[[tool.importlinter.contracts]]
+name = "Figures draw from snapshot data and never fetch or fit"
+type = "forbidden"
+source_modules = ["athletevalue.viz"]
+forbidden_modules = [
+    "athletevalue.api",
+    "athletevalue.cli",
+    "athletevalue.sources",
+    "athletevalue.sports",
+    "httpx",
+]
 
 [[tool.importlinter.contracts]]
 name = "Restricted user-supplied data never reaches fitting code"

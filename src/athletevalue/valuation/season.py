@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from typing import Any
 
@@ -16,6 +16,7 @@ from athletevalue.frames.box import player_box_totals
 from athletevalue.frames.games import SeasonGames, build_season_games, combined_game_map
 from athletevalue.frames.possessions import LineupData, build_lineup_data
 from athletevalue.frames.team_possessions import team_possession_totals
+from athletevalue.identity.people import with_person_ids
 from athletevalue.impact.cv import CvResult, PredictionsFor, cv_lambda, cv_with_prior, game_folds
 from athletevalue.impact.design import Design
 from athletevalue.impact.prior import BoxPriorModel, prior_offset, team_adjust
@@ -35,6 +36,8 @@ class SeasonFrames:
     espn_schedule: pl.DataFrame
     player_box: pl.DataFrame | None = None
     sources: tuple[SourceReference, ...] = field(default=())
+    people: pl.DataFrame | None = None
+    """athlete_id to person_id, for linking seasons; see ``identity.people``."""
 
 
 @dataclass(frozen=True)
@@ -54,7 +57,8 @@ class SeasonModel:
     """Per-game box scores, kept so validation can rebuild the prior from training games."""
     teams: pl.DataFrame
     """team, conference, games, wins, losses, ncaa_bid, ncaa_games, ncaa_wins, ortg,
-    drtg, pace, adj_off, adj_def, adj_net, lineup_poss, n_conference_members."""
+    drtg, pace, adj_off, adj_def, adj_net, adj_net_no_prior, lineup_poss,
+    n_conference_members. ``adj_net_no_prior`` comes from the ratings shrunk toward zero."""
     games: pl.DataFrame
     """contest_id, home, away, home_score, away_score, neutral, ncaa_tournament, possessions."""
     exponent: float
@@ -132,7 +136,13 @@ class SeasonModel:
         return rows.row(0, named=True)
 
     def roster(self, team: str) -> pl.DataFrame:
-        return self.rapm.table.filter(pl.col("team") == team)
+        """The team's players in athlete-id order.
+
+        Ranking by playing time breaks ties by row order. The rating table is sorted by
+        rating, whose last bits vary with BLAS threading, so a fixed order keeps
+        starters, roles and the bench from changing between runs.
+        """
+        return self.rapm.table.filter(pl.col("team") == team).sort("athlete_id")
 
     def _team_row(self, team: str) -> dict[str, Any]:
         rows = self.teams.filter(pl.col("team") == team)
@@ -206,6 +216,7 @@ def assemble_season(
     baseline, design, baseline_fit = fit_rapm(
         lineups, season=season, lam=baseline_lam, min_possessions=min_poss
     )
+    baseline_design = design
     predictions = None
     box_predictions = None
     offset = None
@@ -252,8 +263,16 @@ def assemble_season(
             prior=predictions,
         )
 
-    ratings = team_ratings(lineups, design, fit).with_columns(
-        (pl.col("lineup_off_poss") + pl.col("lineup_def_poss")).alias("lineup_poss")
+    ratings = (
+        team_ratings(lineups, design, fit)
+        .with_columns((pl.col("lineup_off_poss") + pl.col("lineup_def_poss")).alias("lineup_poss"))
+        .join(
+            team_ratings(lineups, baseline_design, baseline_fit).select(
+                "team", pl.col("adj_net").alias("adj_net_no_prior")
+            ),
+            on="team",
+            how="left",
+        )
     )
     totals = team_possession_totals(frames.possessions)
     members = frames.team_ids.group_by("conference").agg(pl.len().alias("n_conference_members"))
@@ -262,7 +281,9 @@ def assemble_season(
             totals.select("team", "ortg", "drtg", "pace"), on="team", how="inner"
         )
         .join(
-            ratings.select("team", "adj_off", "adj_def", "adj_net", "lineup_poss"),
+            ratings.select(
+                "team", "adj_off", "adj_def", "adj_net", "adj_net_no_prior", "lineup_poss"
+            ),
             on="team",
             how="inner",
         )
@@ -288,6 +309,8 @@ def assemble_season(
         raise ValueError(
             f"unknown replacement definition {definition!r}; choose from {sorted(levels)}"
         )
+    rapm = replace(rapm, table=with_person_ids(rapm.table, frames.people))
+    baseline = replace(baseline, table=with_person_ids(baseline.table, frames.people))
     return SeasonModel(
         season=season,
         rapm=rapm,
@@ -322,7 +345,10 @@ def replacement_levels(rapm: RapmResult, registry: AssumptionRegistry) -> dict[s
     coach actually turns to when a rotation player is unavailable.
     """
     low, high = registry.get("mbb.wins.bench_rank_range").interval()
-    table = rapm.table.with_columns((pl.col("off_poss") + pl.col("def_poss")).alias("_poss"))
+    # Sorted by id so ties in playing time break the same way on every run.
+    table = rapm.table.sort("athlete_id").with_columns(
+        (pl.col("off_poss") + pl.col("def_poss")).alias("_poss")
+    )
     ranked = table.with_columns(
         pl.col("_poss").rank(method="ordinal", descending=True).over("team").alias("_rank")
     ).filter((pl.col("_rank") >= low) & (pl.col("_rank") <= high) & (pl.col("_poss") > 0))

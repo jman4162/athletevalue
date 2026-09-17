@@ -31,7 +31,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --extra viz
 
       - name: Lint
         run: |
@@ -48,6 +48,14 @@ jobs:
         # Offline only: the network suite downloads full seasons and runs weekly.
         # The floor sits just under the measured coverage and should only go up.
         run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=85
+
+      - name: README figures are current
+        # Figures are drawn from the committed snapshot with a pinned matplotlib minor
+        # version, so regenerating them must leave no diff.
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: |
+          uv run python scripts/generate_readme_figures.py
+          git diff --exit-code -- docs/_static/
 
       - name: Package builds and its metadata renders
         run: |

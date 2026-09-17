@@ -31,6 +31,7 @@ def test_recovers_signal_and_beats_tier_median():
     assert slopes[0] == pytest.approx(0.8, abs=0.1)
     assert slopes[1] == pytest.approx(-0.4, abs=0.1)
     assert model.cv_log_mae < model.baseline_log_mae
+    assert model.nested_log_mae < model.baseline_log_mae
     assert model.lam == min(model.cv_by_lambda, key=lambda item: item[1])[0]
     assert model.n_schools == 24
 
@@ -80,3 +81,23 @@ def test_minimums_are_enforced():
             min_labels=40,
             min_schools=10,
         )
+
+
+def test_nested_error_does_not_reward_noise():
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(80, 6))
+    schools = rng.integers(0, 12, 80)
+    tiers = schools % 3
+    y = 12.0 + rng.normal(0, 1.0, 80)
+    model = fit_market_model(
+        X,
+        y,
+        schools,
+        tiers,
+        features=tuple("abcdef"),
+        ridge_grid=(0.1, 1.0, 10.0, 100.0),
+        min_labels=40,
+        min_schools=10,
+    )
+    assert model.nested_log_mae >= model.cv_log_mae
+    assert model.nested_residuals.shape == (80,)

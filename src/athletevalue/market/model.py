@@ -12,6 +12,12 @@ player, each labeled player i contributes the prediction of the model fitted
 without i's school, plus and minus i's held-out residual. Quantiles of those
 values give the interval. This needs no distributional assumption and stays valid
 with small samples.
+
+Choosing the penalty by the same leave-one-school-out error that is then reported
+makes that error optimistic: with pure-noise labels the best of four penalties can
+beat a tier median by chance. The error used to decide whether the model is worth
+using is therefore nested: for each held-out school the penalty is chosen by
+leave-one-school-out error on the other schools only.
 """
 
 from __future__ import annotations
@@ -46,10 +52,18 @@ class MarketModel:
     n_labels: int
     n_schools: int
     cv_log_mae: float
-    """Leave-one-school-out mean absolute error in log dollars at the chosen penalty."""
+    """Leave-one-school-out mean absolute error in log dollars at the chosen penalty.
+
+    Optimistic, because the penalty was chosen on it; see ``nested_log_mae``."""
     baseline_log_mae: float
     """The same error for a tier-median predictor."""
     cv_by_lambda: tuple[tuple[float, float], ...]
+    nested_residuals: FloatArray
+    """Absolute held-out residual of each label with the penalty chosen without its school."""
+
+    @property
+    def nested_log_mae(self) -> float:
+        return float(self.nested_residuals.mean())
 
     def _matrix(self, X: FloatArray) -> FloatArray:
         standardized = (X - self.mean) / self.scale
@@ -145,7 +159,38 @@ def fit_market_model(
         cv_log_mae=float(residual.mean()),
         baseline_log_mae=_tier_median_error(log_pay, fold_of_label, tiers),
         cv_by_lambda=cv,
+        nested_residuals=_nested_residuals(matrix, log_pay, fold_of_label, ridge_grid),
     )
+
+
+def _nested_residuals(
+    matrix: FloatArray,
+    log_pay: FloatArray,
+    fold_of_label: NDArray[np.int64],
+    ridge_grid: tuple[float, ...],
+) -> FloatArray:
+    residuals = np.empty(len(log_pay))
+    for k in np.unique(fold_of_label):
+        held = fold_of_label == k
+        train_x, train_y, train_folds = matrix[~held], log_pay[~held], fold_of_label[~held]
+        inner_folds = np.unique(train_folds)
+
+        def inner_error(
+            lam: float,
+            x: FloatArray = train_x,
+            y: FloatArray = train_y,
+            folds: NDArray[np.int64] = train_folds,
+            groups: NDArray[np.int64] = inner_folds,
+        ) -> float:
+            errors = [
+                np.abs(y[folds == j] - x[folds == j] @ _ridge(x[folds != j], y[folds != j], lam))
+                for j in groups
+            ]
+            return float(np.concatenate(errors).mean())
+
+        best = min(ridge_grid, key=inner_error) if len(inner_folds) > 1 else ridge_grid[0]
+        residuals[held] = np.abs(log_pay[held] - matrix[held] @ _ridge(train_x, train_y, best))
+    return residuals
 
 
 def _ridge(matrix: FloatArray, y: FloatArray, lam: float) -> FloatArray:

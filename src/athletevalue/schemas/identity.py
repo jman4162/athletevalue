@@ -9,8 +9,9 @@ class PlayerRef(BaseModel):
     """A player in one season.
 
     ``athlete_id`` is the stats.ncaa.org player id carried by the SportsDataverse
-    possession files. It is stable within a season; linking across seasons is
-    not attempted in v0.1.
+    possession files; it changes every season. ``person_id`` comes from the
+    SportsDataverse reference RAPM release and follows the person across seasons;
+    it is ``None`` when that release has no row for the player.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -19,6 +20,7 @@ class PlayerRef(BaseModel):
     name: str
     team: str
     season: int
+    person_id: str | None = None
 
 
 class TeamRef(BaseModel):

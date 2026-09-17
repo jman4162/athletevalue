@@ -100,3 +100,22 @@ unit = "dimensionless"
 basis = "modelling_choice"
 value = [2.0, 30.0]
 rationale = "Brackets every published basketball exponent (about 8 to 17) with room on both sides."
+
+["mbb.wins.margin_sd_band"]
+description = "Validation band for the fitted game-margin spread, points."
+unit = "points"
+basis = "modelling_choice"
+value = [10.0, 12.5]
+rationale = """The D1-only fit gives 11.15 (2025) and 10.87 (2026). A spread outside this
+band means ratings, venues or scores disagree with the games, for example after a
+game-matching failure, and every WAR figure scales with its inverse."""
+
+["mbb.wins.team_war_min_correlation"]
+description = "Smallest allowed correlation between a team's summed player WAR and its wins."
+unit = "correlation"
+basis = "modelling_choice"
+value = 0.7
+rationale = """Summed linear WAR correlates 0.79 (2025) and 0.80 (2026) with team wins. It
+cannot reach 1: WAR is linear in net rating, wins also depend on close-game luck, and
+garbage time is excluded. A drop below 0.7 would mean the shares, schedule slopes or
+ratings no longer add up to team results."""

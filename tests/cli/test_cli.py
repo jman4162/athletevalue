@@ -62,6 +62,24 @@ def test_validate_prints_gates(cache_dir, one_prior_season):
     assert "prior_cv_error_ratio" in result.output
 
 
+def test_extended_validation_without_economics(cache_dir, one_prior_season):
+    result = invoke(
+        cache_dir,
+        "validate",
+        "--season",
+        "2042",
+        "--no-torvik",
+        "--extended",
+        "--no-economics",
+        "-a",
+        str(one_prior_season),
+    )
+    assert result.exit_code in (0, 1), result.output
+    assert "team_war_vs_wins_correlation" in result.output
+    assert "previous season unavailable" in result.output
+    assert "Revenue and bid gates skipped" in result.output
+
+
 def test_value_summary_and_json(cache_dir, one_prior_season):
     args = ("--season", "2042", "--no-economics", "-a", str(one_prior_season))
     summary = invoke(cache_dir, "value", "BigU0 Player1", *args)

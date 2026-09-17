@@ -18,6 +18,21 @@ Reproducibility
 - Seasons skipped because a source has not published them are reported as notes on
   the economics model.
 
+Figures and documentation
+- `athletevalue[viz]` draws six figures from the snapshot: team ratings against Torvik,
+  cross-validation curves, starters' WAR under each replacement definition, rating
+  precision by possessions, revenue per win, and a synthetic roster's value against
+  price. `scripts/generate_readme_figures.py` writes byte-stable SVGs to `docs/_static`,
+  and CI fails if they differ from the committed files.
+- A documentation site at https://jman4162.github.io/athletevalue/ built by GitHub
+  Actions: the README and METHODOLOGY included rather than copied, equations in
+  LaTeX, generated Validation and Assumptions pages, and an API reference.
+- A test pins every validation figure quoted in the README and METHODOLOGY to the
+  snapshot. Rebuilding it restated the revenue section: one win, this and next
+  season, 0.0065 (80%: 0.0038 to 0.0090; was 0.0063); an NCAA bid, 0.049 (0.014 to
+  0.083; was 0.053). The gates are unchanged.
+- `.zenodo.json` describes the software for a Zenodo DOI on tagged releases.
+
 API and CLI
 - `api.Session` holds a cache and a registry and reuses fitted seasons, economics
   models and market fits, keyed on the season settings, the registry digest and the
@@ -31,7 +46,31 @@ API and CLI
 - `api.load_economics_frames` is no longer exported; import it from
   `athletevalue.sports.mbb.economics_loaders`.
 
+Validation and identity
+- Rating tables and `PlayerRef` carry a `person_id` from the SportsDataverse reference
+  RAPM release, which follows a player across seasons.
+- `validate --extended` adds gates above the ratings: the fitted margin spread, the
+  correlation of summed player WAR with team wins, the returning-player check (the
+  prior must raise the correlation with next season's no-prior ratings), the share of
+  revenue bootstrap draws with a non-positive win effect, and bid-model calibration by
+  decile. Each band is a registry entry with its rationale.
+- `scripts/build_snapshot.py` writes `docs/_static/data/snapshot.json`: gates, CV
+  curves, team ratings, rating precision, WAR by replacement definition, revenue
+  draws, bid calibration and synthetic interval coverage, with no player names or ids.
+- Team tables gain `adj_net_no_prior`, the team rating from the ratings shrunk toward
+  zero.
+
 Fixes
+- The fitted market model's use gate compared the tier median with a held-out error
+  at the penalty chosen on that same error. With pure-noise labels that error beat the
+  tier median (0.810 vs 0.812). The gate now uses nested cross-validation, choosing
+  the penalty without the held-out school (0.832 on the same labels). No valuation
+  used the model, since the registry is empty.
+- Starters, allocation roles and the bench used for the replacement level broke ties
+  in playing time by row order, and rows were sorted by rating, whose last bits vary
+  with BLAS threading. Ties now break by athlete id. The synthetic README example
+  moves by a few thousand dollars because players draw from the generator in a new
+  order.
 - Neutral-site and NCAA tournament games before 2023, which carry no ESPN ids, are
   matched by date and names. Abbreviated box-score names ("UNI", "SFA", "FDU") and
   ESPN's "USC" did not match, so 1 to 7 tournament games a season were missed and

@@ -1,0 +1,20 @@
+{
+  "title": "athletevalue: open models of college basketball player impact, program value and roster-market pay",
+  "upload_type": "software",
+  "creators": [{"name": "Hodge, John"}],
+  "license": "MIT",
+  "keywords": [
+    "college basketball",
+    "adjusted plus-minus",
+    "sports economics",
+    "name image likeness",
+    "revenue sharing"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://jman4162.github.io/athletevalue/",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-softwaredocumentation"
+    }
+  ]
+}

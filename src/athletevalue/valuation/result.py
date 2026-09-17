@@ -39,7 +39,7 @@ class PlayerValuation(BaseModel):
     program_value: Estimate | None
     """Revenue this season from the player's wins and bid, under EADA accounting."""
     program_value_two_season: Estimate | None = None
-    """The same plus next season's carry-over, which accrues whether or not he stays."""
+    """The same plus next season's carry-over, which accrues whether or not the player stays."""
     program_value_components: dict[str, Estimate]
     roster_market_value: Estimate | None
     allocated_market_value: Estimate | None = None

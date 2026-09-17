@@ -198,13 +198,14 @@ class MarketFit:
 
     def usable(self, registry: AssumptionRegistry) -> tuple[bool, str]:
         model = self.model
-        if model.cv_log_mae >= model.baseline_log_mae:
+        if model.nested_log_mae >= model.baseline_log_mae:
             return False, (
-                f"held-out log error {model.cv_log_mae:.3f} does not beat the tier median "
-                f"({model.baseline_log_mae:.3f})"
+                f"nested held-out log error {model.nested_log_mae:.3f} does not beat the tier "
+                f"median ({model.baseline_log_mae:.3f})"
             )
         note = (
-            f"held-out log error {model.cv_log_mae:.3f} vs tier median {model.baseline_log_mae:.3f}"
+            f"nested held-out log error {model.nested_log_mae:.3f} vs tier median "
+            f"{model.baseline_log_mae:.3f}"
         )
         if self.allocation_log_mae is None or self.model_log_mae_allocated is None:
             return True, f"{note}; no label has an allocated price to compare"
@@ -266,7 +267,7 @@ def fit_market(
         labels=data,
         unmatched=matched.unmatched,
         allocation_log_mae=allocation_mae,
-        model_log_mae_allocated=float(model.residuals[priced["row"].to_numpy()].mean()),
+        model_log_mae_allocated=float(model.nested_residuals[priced["row"].to_numpy()].mean()),
         n_allocated=priced.height,
     )
 
