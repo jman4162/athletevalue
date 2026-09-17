@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Fixes from a code review of the market model:
+
+- `athletevalue value --labels` now passes the labels file through; it was ignored.
+- CV+ intervals used half the miscoverage in each tail, so "80%" intervals covered about
+  90%. Each bound now uses the full `1 - level`; synthetic coverage is 0.79-0.83.
+  Monte Carlo draws sample the CV+ set itself instead of a narrower version of it.
+- The must-beat-the-allocation gate was skipped whenever any label lacked an allocated
+  price. The model and the allocation are now compared on the labels the allocation
+  prices, and the gate says when there is nothing to compare.
+- With `economics=False` the model was trained with revenue features but priced
+  players as if revenue were missing. Economics are now fitted for market features.
+- Deals are grouped by normalized name and school, so spelling variants of one
+  player-season become one label.
+- Deal CSVs with numeric ids load; ids are read as text.
+- A fitted price takes the status of its weakest input, including WAR and the tier
+  lists, so it now reports as a scenario. The allocation stays visible whenever it is
+  not the price.
+- The insufficient-labels message counts only men's basketball roster-pay deals.
+
 ## 0.3.0 (2026-09-17)
 
 - Fitted roster-market model: ridge regression of log annual pay on 14 player and

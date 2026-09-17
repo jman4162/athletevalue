@@ -21,6 +21,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from athletevalue.constants import EPS
+
 FloatArray = NDArray[np.float64]
 
 
@@ -59,13 +61,17 @@ class MarketModel:
         return result
 
     def interval_log(self, X: FloatArray, level: float) -> tuple[FloatArray, FloatArray]:
-        """CV+ lower and upper bounds in log dollars, one pair per row of *X*."""
+        """CV+ lower and upper bounds in log dollars, one pair per row of *X*.
+
+        The residuals are absolute, so each bound uses the full miscoverage ``1 - level``,
+        as in Barber et al. (2021), not half of it.
+        """
         matrix = self._matrix(X)
         loo = matrix @ self.fold_coef[self.fold_of_label].T  # rows: new points, cols: labels
         alpha = 1 - level
         n = self.n_labels
-        lower_rank = max(int(np.floor(alpha / 2 * (n + 1))), 1)
-        upper_rank = min(int(np.ceil((1 - alpha / 2) * (n + 1))), n)
+        lower_rank = max(int(np.floor(alpha * (n + 1) + EPS)), 1)
+        upper_rank = min(int(np.ceil((1 - alpha) * (n + 1) - EPS)), n)
         lower = np.sort(loo - self.residuals[None, :], axis=1)[:, lower_rank - 1]
         upper = np.sort(loo + self.residuals[None, :], axis=1)[:, upper_rank - 1]
         return lower, upper
@@ -76,7 +82,7 @@ class MarketModel:
         loo = self._matrix(x[None, :]) @ self.fold_coef[self.fold_of_label].T
         pick = rng.integers(0, self.n_labels, n)
         sign = rng.choice(np.array([-1.0, 1.0]), n)
-        result: FloatArray = loo[0, pick] + sign * rng.uniform(0, 1, n) * self.residuals[pick]
+        result: FloatArray = loo[0, pick] + sign * self.residuals[pick]
         return result
 
 
@@ -132,7 +138,7 @@ def fit_market_model(
         n_schools=n_folds,
         cv_log_mae=float(residual.mean()),
         baseline_log_mae=_tier_median_error(log_pay, fold_of_label, tiers),
-        cv_by_lambda=tuple(cv),
+        cv_by_lambda=cv,
     )
 
 

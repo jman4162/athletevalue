@@ -9,6 +9,7 @@ import polars as pl
 
 from athletevalue.assumptions.registry import AssumptionRegistry
 from athletevalue.constants import PLAYERS_ON_COURT
+from athletevalue.identity.names import normalize_name
 from athletevalue.identity.resolve import (
     AmbiguousPlayerError,
     PlayerNotFoundError,
@@ -126,34 +127,43 @@ def match_labels(
 ) -> LabelMatch:
     """Annual roster pay per player-season from deals, matched to rated players."""
     types = set(registry.get("market.model.label_deal_types").names())
-    totals: dict[tuple[int, str, str], list[float]] = {}
-    ids: dict[tuple[int, str, str], str | None] = {}
+    groups: dict[tuple[int, str, str], list[DealRecord]] = {}
     for deal in deals:
         if deal.sport != "mbb" or deal.deal_type.value not in types:
             continue
-        key = (deal.season, deal.athlete_name, deal.school)
-        totals.setdefault(key, []).append(deal.annualized_value)
-        ids[key] = deal.athlete_id or ids.get(key)
-    rows, unmatched = [], []
-    for (season, name, school), values in totals.items():
+        key = (deal.season, normalize_name(deal.athlete_name), normalize_name(deal.school))
+        groups.setdefault(key, []).append(deal)
+    # Spellings can differ between deals for one player, so pay is summed per resolved
+    # athlete, not per name as written.
+    pay: dict[tuple[int, str], list[float]] = {}
+    found: dict[tuple[int, str], tuple[str, str]] = {}
+    unmatched: list[str] = []
+    for (season, _, _), group in groups.items():
+        first = group[0]
+        label = f"{first.athlete_name} ({first.school}, {season})"
         table = features.filter(pl.col("season") == season)
-        label = f"{name} ({school}, {season})"
         if table.is_empty():
             unmatched.append(f"{label}: season not fitted")
             continue
-        athlete_id = ids[(season, name, school)]
+        athlete_id = next((d.athlete_id for d in reversed(group) if d.athlete_id), None)
         try:
             if athlete_id is None or table.filter(pl.col("athlete_id") == athlete_id).is_empty():
-                team = resolve_team(table.select("team").unique(), school)
-                athlete_id = str(resolve_player(table, name, team=team)["athlete_id"])
+                team = resolve_team(table.select("team").unique(), first.school)
+                athlete_id = str(resolve_player(table, first.athlete_name, team=team)["athlete_id"])
         except (PlayerNotFoundError, AmbiguousPlayerError, TeamNotFoundError) as error:
             unmatched.append(f"{label}: {error}")
             continue
+        resolved = (season, athlete_id)
+        pay.setdefault(resolved, []).extend(d.annualized_value for d in group)
+        team_name = table.filter(pl.col("athlete_id") == athlete_id)["team"][0]
+        found.setdefault(resolved, (label, team_name))
+    rows = []
+    for (season, athlete_id), values in pay.items():
+        label, team_name = found[(season, athlete_id)]
         total = float(sum(values))
         if total <= 0:
             unmatched.append(f"{label}: non-positive pay")
             continue
-        team_name = table.filter(pl.col("athlete_id") == athlete_id)["team"][0]
         rows.append(
             {
                 "athlete_id": athlete_id,
@@ -178,34 +188,35 @@ class MarketFit:
     model: MarketModel
     labels: pl.DataFrame
     unmatched: tuple[str, ...]
-    allocation_log_mae: float | None
-    """Mean absolute log error of the allocation on the same labels, when every label has a
-    budget. The allocation never sees labels, so no hold-out is needed."""
+    allocation_log_mae: float | None = None
+    """Mean absolute log error of the allocation on the labels it prices above zero. The
+    allocation never sees labels, so no hold-out is needed."""
+    model_log_mae_allocated: float | None = None
+    """The model's held-out log error on those same labels."""
+    n_allocated: int = 0
 
     def usable(self, registry: AssumptionRegistry) -> tuple[bool, str]:
-        if self.model.cv_log_mae >= self.model.baseline_log_mae:
+        model = self.model
+        if model.cv_log_mae >= model.baseline_log_mae:
             return False, (
-                f"held-out log error {self.model.cv_log_mae:.3f} does not beat the tier median "
-                f"({self.model.baseline_log_mae:.3f})"
+                f"held-out log error {model.cv_log_mae:.3f} does not beat the tier median "
+                f"({model.baseline_log_mae:.3f})"
             )
+        note = (
+            f"held-out log error {model.cv_log_mae:.3f} vs tier median {model.baseline_log_mae:.3f}"
+        )
+        if self.allocation_log_mae is None or self.model_log_mae_allocated is None:
+            return True, f"{note}; no label has an allocated price to compare"
+        compared = (
+            f"{self.model_log_mae_allocated:.3f} vs allocation {self.allocation_log_mae:.3f} "
+            f"on the {self.n_allocated} labels it prices"
+        )
         if (
             registry.get("market.model.require_beats_allocation").flag()
-            and self.allocation_log_mae is not None
-            and self.model.cv_log_mae >= self.allocation_log_mae
+            and self.model_log_mae_allocated >= self.allocation_log_mae
         ):
-            return False, (
-                f"held-out log error {self.model.cv_log_mae:.3f} does not beat the allocation "
-                f"({self.allocation_log_mae:.3f})"
-            )
-        return True, (
-            f"held-out log error {self.model.cv_log_mae:.3f} vs tier median "
-            f"{self.model.baseline_log_mae:.3f}"
-            + (
-                ""
-                if self.allocation_log_mae is None
-                else f" and allocation {self.allocation_log_mae:.3f}"
-            )
-        )
+            return False, f"held-out log error does not beat the allocation: {compared}"
+        return True, f"{note}; {compared}"
 
 
 def fit_market(
@@ -214,13 +225,16 @@ def fit_market(
     registry: AssumptionRegistry,
     *,
     allocation_medians: pl.DataFrame | None = None,
+    matched: LabelMatch | None = None,
 ) -> MarketFit:
     """Fit on every labeled player-season in *features*.
 
     *allocation_medians* (athlete_id, season, price) lets the fit report how the
-    allocation does on the same players.
+    allocation does on the same players. *matched* reuses an earlier ``match_labels``
+    result for these deals and features.
     """
-    matched = match_labels(deals, features, registry)
+    if matched is None:
+        matched = match_labels(deals, features, registry)
     data = matched.labels.join(features, on=["athlete_id", "season"], how="inner", suffix="_f")
     model = fit_market_model(
         data.select(FEATURES).to_numpy().astype(np.float64),
@@ -232,18 +246,32 @@ def fit_market(
         min_labels=int(registry.get("market.model.min_labels").scalar()),
         min_schools=int(registry.get("market.model.min_schools").scalar()),
     )
-    allocation_mae = None
-    if allocation_medians is not None:
-        joined = data.join(allocation_medians, on=["athlete_id", "season"], how="inner")
-        priced = joined.filter(pl.col("price") > 0)
-        if priced.height == data.height:
-            allocation_mae = float(
-                np.mean(np.abs(priced["log_pay"].to_numpy() - np.log(priced["price"].to_numpy())))
-            )
+    if allocation_medians is None:
+        return MarketFit(model=model, labels=data, unmatched=matched.unmatched)
+    # Labels from seasons without cited budgets, or players the allocation leaves unpaid,
+    # have no allocated price; both predictors are scored on the rest.
+    priced = (
+        data.with_row_index("row")
+        .join(allocation_medians, on=["athlete_id", "season"], how="inner")
+        .filter(pl.col("price") > 0)
+    )
+    if priced.is_empty():
+        return MarketFit(model=model, labels=data, unmatched=matched.unmatched)
+    allocation_mae = float(
+        np.mean(np.abs(priced["log_pay"].to_numpy() - np.log(priced["price"].to_numpy())))
+    )
     return MarketFit(
-        model=model, labels=data, unmatched=matched.unmatched, allocation_log_mae=allocation_mae
+        model=model,
+        labels=data,
+        unmatched=matched.unmatched,
+        allocation_log_mae=allocation_mae,
+        model_log_mae_allocated=float(model.residuals[priced["row"].to_numpy()].mean()),
+        n_allocated=priced.height,
     )
 
+
+FEATURE_ASSUMPTIONS = ("market.power_conferences", "market.tier_b_conferences")
+"""Registry entries ``player_features`` reads for the tier flags of every label."""
 
 MODEL_ASSUMPTIONS = (
     "market.model.label_deal_types",

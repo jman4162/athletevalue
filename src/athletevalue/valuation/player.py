@@ -18,6 +18,7 @@ from athletevalue.schemas.registry import DealRecord
 from athletevalue.uncertainty.draws import summarize
 from athletevalue.valuation.economy import EconomicsModel
 from athletevalue.valuation.market_fit import (
+    FEATURE_ASSUMPTIONS,
     FEATURES,
     MODEL_ASSUMPTIONS,
     MarketFit,
@@ -52,9 +53,12 @@ def value_player(
     deals: list[DealRecord] | None = None,
     market_fit: MarketFit | None = None,
     market_note: str | None = None,
+    market_economics: EconomicsModel | None = None,
     seed: int = 0,
     as_of: date | None = None,
 ) -> PlayerValuation:
+    """*market_economics* is the economics model the market fit's features used; it
+    defaults to *economics* and must be given when that is ``None`` but the fit had one."""
     row = resolve_player(season.rapm.table, name, team=team)
     athlete, team_name = str(row["athlete_id"]), str(row["team"])
     draws = team_draws(season, economics, registry, team_name, seed=seed)
@@ -170,7 +174,12 @@ def value_player(
         if not usable:
             warnings.append(f"fitted market model not used: {note}")
         else:
-            features = player_features(season, economics, registry, teams=(team_name,))
+            features = player_features(
+                season,
+                economics if market_economics is None else market_economics,
+                registry,
+                teams=(team_name,),
+            )
             x = features.filter(pl.col("athlete_id") == athlete).select(FEATURES).to_numpy()[0]
             model = market_fit.model
             lower, upper = model.interval_log(x[None, :], level)
@@ -178,8 +187,11 @@ def value_player(
             price_draws = np.exp(
                 model.draws_log(x, len(draws.war[athlete]), np.random.default_rng(seed + 1))
             )
+            model_ids = (*FEATURE_ASSUMPTIONS, *MODEL_ASSUMPTIONS)
             model_status = EvidenceStatus.weakest(
-                EvidenceStatus.ESTIMATED, *(registry.get(i).status for i in MODEL_ASSUMPTIONS)
+                EvidenceStatus.ESTIMATED,
+                war_status,
+                *(registry.get(i).status for i in model_ids),
             )
             market = Estimate(
                 value=float(np.exp(median)),
@@ -191,7 +203,7 @@ def value_player(
                 method=f"fitted_market_model:{model.n_labels} labels",
             )
             price_basis = "fitted_model"
-            assumptions += list(MODEL_ASSUMPTIONS)
+            assumptions += list(model_ids)
 
     observed: Estimate | None = None
     if deals:
@@ -242,7 +254,7 @@ def value_player(
         program_value=program_value,
         program_value_components=components,
         roster_market_value=market,
-        allocated_market_value=allocated if price_basis == "fitted_model" else None,
+        allocated_market_value=allocated if market is not allocated else None,
         observed_price=observed,
         price_basis=price_basis,
         surplus=surplus,

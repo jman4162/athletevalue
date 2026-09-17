@@ -144,7 +144,7 @@ def value(
 ) -> None:
     """Value one player-season."""
     valuation = api.value_player(
-        name, season, team=team, registry=_registry(assumptions), seed=seed
+        name, season, team=team, labels=labels, registry=_registry(assumptions), seed=seed
     )
     if as_json:
         typer.echo(json.dumps(valuation.model_dump(mode="json"), indent=2))

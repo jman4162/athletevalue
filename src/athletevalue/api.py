@@ -94,8 +94,23 @@ def load_deals(labels: Path | None = None) -> list[DealRecord]:
     """Deals from the packaged registry, plus a user CSV in the same schema if given."""
     deals = load_deal_registry()
     if labels is not None:
-        deals += load_deal_registry(pl.read_csv(labels, infer_schema_length=None))
+        # Read every column as text: numeric ids such as stats.ncaa.org athlete ids would
+        # otherwise load as integers and fail the string fields of DealRecord.
+        deals += load_deal_registry(pl.read_csv(labels, infer_schema_length=0))
     return deals
+
+
+def _label_seasons(deals: list[DealRecord], registry: AssumptionRegistry) -> list[int]:
+    """Seasons of the deals that can become labels; raises below the registry minimum."""
+    types = set(registry.get("market.model.label_deal_types").names())
+    labeled = [d for d in deals if d.sport == "mbb" and d.deal_type.value in types]
+    minimum = int(registry.get("market.model.min_labels").scalar())
+    if not labeled or len(labeled) < minimum:
+        raise InsufficientLabelsError(
+            f"{len(labeled)} disclosed deals available; at least {minimum} labeled "
+            "player-seasons needed"
+        )
+    return sorted({d.season for d in labeled})
 
 
 def fit_market(
@@ -115,13 +130,7 @@ def fit_market(
     cache = cache or ArtifactCache.default()
     registry = registry or default_registry()
     deals = load_deals(labels) if deals is None else deals
-    seasons = sorted({d.season for d in deals if d.sport == "mbb"})
-    minimum = int(registry.get("market.model.min_labels").scalar())
-    if len([d for d in deals if d.sport == "mbb"]) < minimum:
-        raise InsufficientLabelsError(
-            f"{len(deals)} disclosed deals available; at least {minimum} labeled "
-            "player-seasons needed"
-        )
+    seasons = _label_seasons(deals, registry)
     models = dict(fitted or {})
     econ = economics or fit_economics(max(seasons), cache=cache, registry=registry)
     features = []
@@ -139,11 +148,18 @@ def fit_market(
         medians = np.median(allocation.pay, axis=0)
         prices.append(
             pl.DataFrame(
-                {"athlete_id": list(allocation.athlete_ids), "season": season, "price": medians}
+                {
+                    "athlete_id": list(allocation.athlete_ids),
+                    "season": [season] * len(allocation.athlete_ids),
+                    "price": medians,
+                },
+                schema_overrides={"season": pl.Int64},
             )
         )
     allocation_medians = pl.concat(prices) if prices else None
-    return fit_market_labels(table, deals, registry, allocation_medians=allocation_medians)
+    return fit_market_labels(
+        table, deals, registry, allocation_medians=allocation_medians, matched=matched
+    )
 
 
 def value_player(
@@ -171,14 +187,22 @@ def value_player(
     econ = fit_economics(season, cache=cache, registry=registry) if economics else None
     deals = load_deals(labels)
     market_fit: MarketFit | None = None
+    market_econ = econ
     note: str | None = None
     try:
+        last_label_season = max(_label_seasons(deals, registry))
+        if market_econ is None or last_label_season > season:
+            # The model is trained on revenue features, so the player's own features need
+            # the same economics even when program value is switched off.
+            market_econ = fit_economics(
+                max(last_label_season, season), cache=cache, registry=registry
+            )
         market_fit = fit_market(
             deals,
             cache=cache,
             registry=registry,
             fitted={season: model},
-            economics=econ if deals and max(d.season for d in deals) <= season else None,
+            economics=market_econ,
         )
     except InsufficientLabelsError as error:
         note = str(error)
@@ -191,6 +215,7 @@ def value_player(
         deals=deals,
         market_fit=market_fit,
         market_note=note,
+        market_economics=market_econ,
         seed=seed,
     )
 

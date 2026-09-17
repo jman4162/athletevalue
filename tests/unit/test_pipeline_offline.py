@@ -181,12 +181,21 @@ def test_fitted_market_model_sets_the_price_when_it_beats_baselines(season, econ
     matched = match_labels(deals, features, registry)
     assert any("Nobody Here" in line for line in matched.unmatched)
 
+    # A second deal for the same player-season with a different spelling adds to one label.
+    respelled = deals[1].model_copy(
+        update={"deal_id": "respelled", "athlete_name": deals[1].athlete_name.upper()}
+    )
+    merged = match_labels([*deals, respelled], features, registry).labels
+    assert merged.height == matched.labels.height
+    assert merged.filter(pl.col("n_deals") == 2).height == 1
+
     fit = fit_market(features, deals, registry)
     usable, note = fit.usable(registry)
     assert usable, note
     name = model.rapm.table.filter(~pl.col("pooled"))["name"][0]
     valuation = value_player(model, economics, registry, name, deals=deals, market_fit=fit, seed=3)
     assert valuation.price_basis == "registry"  # the player's own deal outranks the model
+    assert valuation.allocated_market_value is not None  # model value shown, allocation kept
 
     other = [d for d in deals if d.athlete_name != name]
     fit_without = fit_market(features, other, registry)
@@ -205,11 +214,26 @@ def test_noise_labels_do_not_replace_the_allocation(season, economics, tmp_path)
     registry = _small_label_registry(tmp_path)
     deals = _deals(model, lambda net, rng: 12.5 + rng.normal(0, 1.0), seed=4)
     fit = fit_market(player_features(model, economics, registry), deals, registry)
-    usable, _ = fit.usable(registry)
+    usable, note = fit.usable(registry)
+    assert not usable, note
     name = model.rapm.table.filter(~pl.col("pooled"))["name"][1]
-    if not usable:
-        valuation = value_player(model, economics, registry, name, market_fit=fit, seed=3)
-        assert valuation.price_basis in {"allocation", "registry"}
-        assert any("fitted market model not used" in w for w in valuation.warnings)
-    else:
-        assert fit.model.cv_log_mae < fit.model.baseline_log_mae
+    valuation = value_player(model, economics, registry, name, market_fit=fit, seed=3)
+    assert valuation.price_basis == "allocation"
+    assert any("fitted market model not used" in w for w in valuation.warnings)
+
+
+def test_allocation_gate_uses_the_labels_the_allocation_prices(season, economics, tmp_path):
+    from athletevalue.valuation.market_fit import fit_market, player_features
+
+    model, _ = season
+    registry = _small_label_registry(tmp_path)
+    deals = _deals(model, lambda net, rng: 12.5 + 0.25 * net + rng.normal(0, 0.05))
+    features = player_features(model, economics, registry)
+    fit = fit_market(features, deals, registry)
+    # The allocation prices every label but one exactly; the comparison runs on the rest
+    # instead of being skipped, and the model cannot beat an exact price.
+    exact = fit.labels.select("athlete_id", "season", pl.col("log_pay").exp().alias("price"))
+    fit = fit_market(features, deals, registry, allocation_medians=exact.slice(1))
+    assert fit.n_allocated == fit.labels.height - 1
+    usable, note = fit.usable(registry)
+    assert not usable and "does not beat the allocation" in note

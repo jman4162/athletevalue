@@ -17,7 +17,7 @@ def load_deal_registry(frame: pl.DataFrame | None = None) -> list[DealRecord]:
     """Validate every row of the packaged registry (or *frame*) as a ``DealRecord``."""
     if frame is None:
         with resources.as_file(resources.files(_DATA_PACKAGE) / REGISTRY_FILE) as path:
-            frame = pl.read_csv(path, infer_schema_length=None)
+            frame = pl.read_csv(path, infer_schema_length=0)
     records = []
     for row in frame.iter_rows(named=True):
         cleaned = {key: value for key, value in row.items() if value not in (None, "")}
