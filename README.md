@@ -267,7 +267,7 @@ If you use athletevalue in a publication, cite the software:
 
 `10.5281/zenodo.22818303` resolves to whichever version is current. Each release also
 gets its own DOI, which Zenodo mints when the GitHub Release is published:
-`10.5281/zenodo.22818304` is 0.4.0. A release cannot name its own DOI, because the DOI
+`10.5281/zenodo.22821976` is 0.5.0 and `10.5281/zenodo.22818304` is 0.4.0. A release cannot name its own DOI, because the DOI
 does not exist until the release does, so cite the version-independent one above unless
 you need to pin an exact version.
 
